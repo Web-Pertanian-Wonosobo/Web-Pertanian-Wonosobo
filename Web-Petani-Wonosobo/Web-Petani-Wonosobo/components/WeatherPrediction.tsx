@@ -21,6 +21,7 @@ import {
   Sprout,
   Calendar,
   Download,
+  RefreshCw,
 } from "lucide-react";
 import {
   LineChart,
@@ -34,33 +35,86 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
+import { MockAPIService, BACKEND_AVAILABLE } from "../src/mockAPI";
+
 const fetchBMKGData = async (adm4Code: string) => {
-  const url = `https://api.bmkg.go.id/publik/prakiraan-cuaca?adm4=${adm4Code}`;
+  console.log(`🌤️ Fetching weather data for: ${adm4Code}`);
+  
   try {
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error(`Error: ${response.status} ${response.statusText}`);
+    if (BACKEND_AVAILABLE) {
+      console.log("📡 Trying backend API...");
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+      
+      try {
+        const response = await fetch(
+          `http://localhost:8000/api/weather/forecast?adm4_code=${adm4Code}&days=7`,
+          { signal: controller.signal }
+        );
+        clearTimeout(timeoutId);
+        
+        if (response.ok) {
+          const result = await response.json();
+          console.log("✅ Backend API success:", result);
+          
+          if (result.success && result.data) {
+            return { 
+              location: result.data.location, 
+              forecast: result.data.forecast 
+            };
+          }
+        }
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        console.log("❌ Backend API failed:", fetchError);
+      }
     }
-    const rawData = await response.json();
-    const locationData = rawData?.lokasi;
-    const forecastData = rawData?.data?.[0]?.cuaca;
-    if (!locationData || !forecastData) {
-      throw new Error("Struktur data dari BMKG API tidak valid.");
-    }
-    return { location: locationData, forecast: forecastData };
+    
+    // Always fallback to mock API
+    console.log("🔄 Using Mock API for weather data");
+    const mockResult = await MockAPIService.fetchWeatherData(adm4Code);
+    console.log("✅ Mock API success:", mockResult);
+    
+    return {
+      location: mockResult.data.location,
+      forecast: mockResult.data.forecast
+    };
+    
   } catch (error) {
-    console.error("Gagal mengambil data dari BMKG API:", error);
-    return null;
+    console.error("💥 Critical error in fetchBMKGData:", error);
+    
+    // Emergency fallback with basic data
+    return {
+      location: {
+        province: "Jawa Tengah",
+        regency: "Wonosobo", 
+        district: "Wonosobo",
+        village: "Emergency Data",
+        coordinates: { lat: -7.36, lon: 109.90 }
+      },
+      forecast: [
+        {
+          date: new Date().toISOString().split('T')[0],
+          weather: "Cerah",
+          temp_min: 18,
+          temp_max: 28,
+          humidity: 75,
+          rainfall: 0
+        }
+      ]
+    };
   }
 };
 
 // Fungsi untuk menganalisis data cuaca dan memberikan rekomendasi AI
-const analyzeWithAI = (weatherData: any) => {
+const analyzeWithAI = (weatherData?: any) => {
+  console.log("🤖 Analyzing weather data with AI...");
+  
   // === LOGIKA AI ANDA DI SINI ===
   // Ini adalah data simulasi, perlu disesuaikan dengan output model AI Anda.
   const monthlyPlantingPredictions = [
     {
-      month: "Agustus 2025",
+      month: "September 2025",
       season: "Kemarau",
       rainfall: 80,
       temp: 26,
@@ -71,7 +125,7 @@ const analyzeWithAI = (weatherData: any) => {
       ],
     },
     {
-      month: "September 2025",
+      month: "Oktober 2025",
       season: "Peralihan",
       rainfall: 120,
       temp: 27,
@@ -82,7 +136,7 @@ const analyzeWithAI = (weatherData: any) => {
       ],
     },
     {
-      month: "Oktober 2025",
+      month: "November 2025",
       season: "Peralihan ke Hujan",
       rainfall: 180,
       temp: 26,
@@ -154,28 +208,50 @@ export function WeatherPrediction() {
   const [weatherData, setWeatherData] = useState<any>(null);
   const [aiRecommendations, setAiRecommendations] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const loadData = async () => {
+      console.log("🔄 Starting to load weather data...");
       setIsLoading(true);
-      const data = await fetchBMKGData(selectedLocation);
+      setError(null);
+      
+      try {
+        console.log(`📍 Loading data for location: ${selectedLocation}`);
+        const data = await fetchBMKGData(selectedLocation);
+        console.log("✅ Weather data received:", data);
 
-      if (data) {
-        const { forecast } = data;
-        
-        // Konversi data prakiraan per 3 jam menjadi data mingguan dan chart
-        const processedData = convertForecastToWeekly(forecast);
-        setWeatherData(processedData);
-        
-        // Panggil AI dengan data yang sudah diproses
-        const recommendations = analyzeWithAI(processedData);
-        setAiRecommendations(recommendations);
-      } else {
+        if (data && data.forecast) {
+          const { forecast } = data;
+          
+          // Konversi data prakiraan per 3 jam menjadi data mingguan dan chart
+          console.log("🔄 Processing forecast data...");
+          const processedData = convertForecastToWeekly(forecast);
+          console.log("✅ Processed data:", processedData);
+          setWeatherData(processedData);
+          
+          // Panggil AI dengan data yang sudah diproses
+          console.log("🤖 Getting AI recommendations...");
+          const recommendations = analyzeWithAI(data);
+          console.log("✅ AI recommendations:", recommendations);
+          setAiRecommendations(recommendations);
+        } else {
+          console.warn("⚠️ No forecast data received");
+          setWeatherData(null);
+          setAiRecommendations(null);
+          setError("Data cuaca tidak tersedia");
+        }
+      } catch (err) {
+        console.error("❌ Error loading weather data:", err);
+        setError("Gagal memuat data cuaca");
         setWeatherData(null);
         setAiRecommendations(null);
+      } finally {
+        setIsLoading(false);
+        console.log("🏁 Weather data loading finished");
       }
-      setIsLoading(false);
     };
+    
     loadData();
   }, [selectedLocation]);
 
@@ -290,9 +366,36 @@ export function WeatherPrediction() {
   if (isLoading) {
     return (
       <div className="p-6 max-w-8xl mx-auto flex justify-center items-center h-screen">
-        <p className="text-muted-foreground">
-          Memuat data cuaca dan rekomendasi...
-        </p>
+        <div className="text-center">
+          <Cloud className="h-8 w-8 animate-pulse mx-auto mb-4 text-blue-500" />
+          <p className="text-muted-foreground mb-2">
+            Memuat data cuaca BMKG...
+          </p>
+          <p className="text-sm text-muted-foreground">
+            {BACKEND_AVAILABLE ? 
+              "Mengambil data realtime..." : 
+              "Memuat data simulasi..."
+            }
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6 max-w-8xl mx-auto flex justify-center items-center h-screen">
+        <div className="text-center">
+          <CloudRain className="h-8 w-8 mx-auto mb-4 text-red-500" />
+          <p className="text-red-600 mb-2">{error}</p>
+          <Button 
+            onClick={() => window.location.reload()} 
+            variant="outline"
+            size="sm"
+          >
+            Coba Lagi
+          </Button>
+        </div>
       </div>
     );
   }
@@ -300,10 +403,23 @@ export function WeatherPrediction() {
   if (!weatherData || !aiRecommendations) {
     return (
       <div className="p-6 max-w-8xl mx-auto flex justify-center items-center h-screen">
-        <p className="text-destructive-foreground">
-          Gagal memuat data cuaca. Silakan pilih lokasi lain atau coba lagi
-          nanti.
-        </p>
+        <div className="text-center">
+          <CloudRain className="h-8 w-8 mx-auto mb-4 text-gray-400" />
+          <p className="text-muted-foreground mb-2">
+            Data cuaca tidak tersedia
+          </p>
+          <p className="text-sm text-muted-foreground mb-4">
+            Gagal memuat data cuaca. Silakan pilih lokasi lain atau coba lagi nanti.
+          </p>
+          <Button 
+            onClick={() => window.location.reload()} 
+            variant="outline"
+            size="sm"
+          >
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Coba Lagi
+          </Button>
+        </div>
       </div>
     );
   }
@@ -311,10 +427,27 @@ export function WeatherPrediction() {
   return (
     <div className="p-6 max-w-8xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold mb-2">Prediksi Cuaca</h1>
-        <p className="text-muted-foreground">
-          Prakiraan cuaca dan saran waktu tanam dari BMKG
-        </p>
+        <div className="flex justify-between items-start">
+          <div>
+            <h1 className="text-3xl font-bold mb-2">Prediksi Cuaca</h1>
+            <p className="text-muted-foreground">
+              Prakiraan cuaca dan saran waktu tanam dari BMKG
+            </p>
+            {!BACKEND_AVAILABLE && (
+              <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-sm text-blue-800">
+                Mode Demo: Data simulasi
+              </div>
+            )}
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => window.location.reload()}
+          >
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       <div className="mb-6">

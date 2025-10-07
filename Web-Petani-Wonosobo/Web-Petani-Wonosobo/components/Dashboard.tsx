@@ -3,6 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
 import { Alert, AlertDescription } from "./ui/alert";
 import { Badge } from "./ui/badge";
+import { BackendStatus } from "./BackendStatus";
+import { BACKEND_AVAILABLE } from "../src/mockAPI";
 import {
   Mountain,
   Cloud,
@@ -47,8 +49,20 @@ export function Dashboard({ onNavigate }: DashboardProps) {
       <div className="mb-6">
         <h1 className="text-3xl font-bold mb-2">Dashboard EcoScope</h1>
         <p className="text-muted-foreground">
-          Monitoring lingkungan dan pasar untuk Kabupaten Banyumas
+          Monitoring lingkungan dan pasar untuk Kabupaten Wonosobo
         </p>
+        
+        {/* Demo Mode Indicator */}
+        {!BACKEND_AVAILABLE && (
+          <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-center space-x-2">
+              <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+              <span className="text-sm font-medium text-blue-800">
+                Mode Demo: Data simulasi untuk demonstrasi
+              </span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Alert Banner */}

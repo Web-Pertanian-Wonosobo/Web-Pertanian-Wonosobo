@@ -4,6 +4,7 @@ import { AdminDashboard } from "./AdminDashboard";
 import { SlopeAnalysis } from "./SlopeAnalysis";
 import { WeatherPrediction } from "./WeatherPrediction";
 import { PricePrediction } from "./PricePrediction";
+import { TestPrice } from "./TestPrice";
 import { AccountPage } from "./AccountPage";
 import { EditProfile } from "./EditProfile";
 import { ChangePassword } from "./ChangePassword";
@@ -42,6 +43,7 @@ export function PageRouter({
         return <WeatherPrediction />;
       case "price":
         return <PricePrediction />;
+        // return <TestPrice />;
       case "account":
         return <AccountPage onLogout={onLogout} onNavigate={onNavigate} />;
       case "edit-profile":

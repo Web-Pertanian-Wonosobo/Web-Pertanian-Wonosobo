@@ -18,10 +18,12 @@ import {
   DollarSign,
   Wheat,
   Download,
+  FileText,
   Share2,
   RefreshCw,
 } from "lucide-react";
 import {
+  LineChart,
   Line,
   AreaChart,
   Area,
@@ -141,14 +143,11 @@ class PriceService {
 }
 
 export function PricePrediction() {
-  console.log("🚀 PricePrediction component loaded");
-  
-  try {
-    const [selectedCommodity, setSelectedCommodity] = useState("beras");
-    const [priceData, setPriceData] = useState<PriceData | null>(null);
-    const [historicalData, setHistoricalData] = useState<HistoricalData | null>(null);
-    const [marketData, setMarketData] = useState<MarketData | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
+  const [selectedCommodity, setSelectedCommodity] = useState("beras");
+  const [priceData, setPriceData] = useState<PriceData | null>(null);
+  const [historicalData, setHistoricalData] = useState<HistoricalData | null>(null);
+  const [marketData, setMarketData] = useState<MarketData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [simulationData, setSimulationData] = useState({
     harvestAmount: "",
     harvestDate: "",
@@ -170,26 +169,20 @@ export function PricePrediction() {
   }, [selectedCommodity]);
 
   const loadAllData = async () => {
-    console.log("🔄 Starting to load all data...");
     setIsLoading(true);
     try {
-      console.log("📡 Calling PriceService.fetchPrices()");
-      const pricesResponse = await PriceService.fetchPrices();
-      console.log("💰 Prices response:", pricesResponse);
-      
-      console.log("📡 Calling PriceService.fetchLocalMarkets()");
-      const marketsResponse = await PriceService.fetchLocalMarkets();
-      console.log("🏪 Markets response:", marketsResponse);
+      const [pricesResponse, marketsResponse] = await Promise.all([
+        PriceService.fetchPrices(),
+        PriceService.fetchLocalMarkets()
+      ]);
       
       setPriceData(pricesResponse);
       setMarketData(marketsResponse);
-      console.log("✅ Data loaded successfully");
     } catch (error) {
-      console.error("❌ Error loading data:", error);
       toast.error("Gagal memuat data harga");
+      console.error("Error loading data:", error);
     } finally {
       setIsLoading(false);
-      console.log("🏁 Loading finished");
     }
   };
 
@@ -319,10 +312,7 @@ export function PricePrediction() {
             Memuat data harga komoditas...
           </p>
           <p className="text-sm text-muted-foreground mt-2">
-            {BACKEND_AVAILABLE ? 
-              "Mengambil data real-time dari server..." : 
-              "Memuat data demo (Backend offline)"
-            }
+            {BACKEND_AVAILABLE ? "Menggunakan backend API" : "🔄 Menggunakan Mock API (Backend tidak tersedia)"}
           </p>
         </div>
       </div>
@@ -337,28 +327,10 @@ export function PricePrediction() {
           Analisis pasar dan simulasi pendapatan untuk petani Wonosobo
         </p>
         {!BACKEND_AVAILABLE && (
-          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <div className="flex items-start space-x-2">
-              <div className="flex-shrink-0">
-                <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-blue-800">Mode Demo Aktif</p>
-                <p className="text-xs text-blue-700 mt-1">
-                  Menggunakan data simulasi Bapanas. Untuk harga real-time, aktifkan backend Python.
-                </p>
-                <details className="mt-2">
-                  <summary className="text-xs text-blue-600 cursor-pointer hover:text-blue-800">
-                    Cara mengaktifkan backend →
-                  </summary>
-                  <div className="mt-2 p-2 bg-blue-25 rounded text-xs text-blue-700">
-                    <p className="font-mono">cd backend</p>
-                    <p className="font-mono">pip install -r requirements.txt</p>
-                    <p className="font-mono">uvicorn app.main:app --reload --port 8000</p>
-                  </div>
-                </details>
-              </div>
-            </div>
+          <div className="mt-2 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+            <p className="text-sm text-orange-800">
+              🔄 Mode Demo: Menggunakan data simulasi karena backend belum tersedia
+            </p>
           </div>
         )}
       </div>
@@ -717,7 +689,7 @@ export function PricePrediction() {
                 <div className="space-y-4">
                   <div className="p-3 bg-blue-50 rounded-lg">
                     <p className="text-sm text-muted-foreground">
-                      Sumber: {BACKEND_AVAILABLE ? "Badan Pangan Nasional (Bapanas)" : "Data Simulasi"}
+                      Sumber: {BACKEND_AVAILABLE ? "Badan Pangan Nasional (Bapanas)" : "Mock Data (Demo Mode)"}
                     </p>
                     <p className="font-medium">Harga Eceran Tertinggi (HET)</p>
                   </div>
@@ -732,7 +704,7 @@ export function PricePrediction() {
                     ))}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    * {BACKEND_AVAILABLE ? "Data diperbarui secara realtime" : "Data simulasi"}
+                    * {BACKEND_AVAILABLE ? "Data diperbarui dari API Bapanas" : "Data simulasi untuk demo"}
                   </p>
                 </div>
               </CardContent>
@@ -742,21 +714,4 @@ export function PricePrediction() {
       </Tabs>
     </div>
   );
-  } catch (error) {
-    console.error("💥 Error in PricePrediction component:", error);
-    return (
-      <div className="p-6">
-        <div className="text-red-500">
-          <h1 className="text-2xl font-bold mb-2">Error</h1>
-          <p>Something went wrong loading the Price Prediction component.</p>
-          <details className="mt-4">
-            <summary>Error Details</summary>
-            <pre className="mt-2 p-3 bg-gray-100 rounded text-sm overflow-auto">
-              {error instanceof Error ? error.message : String(error)}
-            </pre>
-          </details>
-        </div>
-      </div>
-    );
-  }
 }
