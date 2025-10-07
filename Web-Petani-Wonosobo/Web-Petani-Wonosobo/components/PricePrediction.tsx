@@ -345,18 +345,8 @@ export function PricePrediction() {
               <div>
                 <p className="text-sm font-medium text-blue-800">Mode Demo Aktif</p>
                 <p className="text-xs text-blue-700 mt-1">
-                  Menggunakan data simulasi Bapanas. Untuk harga real-time, aktifkan backend Python.
+                  Menggunakan data simulasi Bapanas. Harga real-time tersedia jika backend terhubung.
                 </p>
-                <details className="mt-2">
-                  <summary className="text-xs text-blue-600 cursor-pointer hover:text-blue-800">
-                    Cara mengaktifkan backend →
-                  </summary>
-                  <div className="mt-2 p-2 bg-blue-25 rounded text-xs text-blue-700">
-                    <p className="font-mono">cd backend</p>
-                    <p className="font-mono">pip install -r requirements.txt</p>
-                    <p className="font-mono">uvicorn app.main:app --reload --port 8000</p>
-                  </div>
-                </details>
               </div>
             </div>
           </div>

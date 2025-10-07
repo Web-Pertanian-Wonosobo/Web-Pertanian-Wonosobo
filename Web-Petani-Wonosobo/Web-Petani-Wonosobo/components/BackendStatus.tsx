@@ -64,26 +64,7 @@ export function BackendStatus({ isConnected, className = "", showDetails = false
               }
             </p>
 
-            {!isConnected && (
-              <details className="mt-2">
-                <summary className="text-xs text-blue-600 cursor-pointer hover:text-blue-800 select-none">
-                  Cara mengaktifkan backend →
-                </summary>
-                <div className="mt-2 p-2 bg-blue-100 rounded text-xs text-blue-800">
-                  <div className="space-y-1">
-                    <p className="font-semibold">Langkah instalasi:</p>
-                    <div className="space-y-1 font-mono text-xs">
-                      <p>1. cd backend</p>
-                      <p>2. pip install -r requirements.txt</p>
-                      <p>3. uvicorn app.main:app --reload --port 8000</p>
-                    </div>
-                    <p className="text-xs mt-2 italic">
-                      Setelah backend aktif, refresh halaman untuk menggunakan data live.
-                    </p>
-                  </div>
-                </div>
-              </details>
-            )}
+            {/* Details with activation steps were removed to simplify the UI */}
           </div>
         </div>
       </CardContent>
