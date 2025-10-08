@@ -1,17 +1,15 @@
 {
-  "name": "web-pertanian-wonosobo", // Nama proyek yang benar
-  "private": true, // Memastikan proyek ini private
-  "version": "1.0.0", // Versi terbaru
-  "description": "", // Tambahkan deskripsi jika ada
-  "main": "index.js", // Tentukan file utama jika ada
+  "name": "package",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build", // Tambahkan script build jika diperlukan
-    "lint": "eslint .", // Tambahkan script lint jika diperlukan
-    "preview": "vite preview" // Menambahkan script preview jika diperlukan
+    "build": "tsc -b && vite build",
+    "lint": "eslint .",
+    "preview": "vite preview"
   },
   "dependencies": {
-    "@headlessui/react": "^2.2.9",
     "@radix-ui/react-avatar": "^1.1.10",
     "@radix-ui/react-checkbox": "^1.3.2",
     "@radix-ui/react-dialog": "^1.1.14",
@@ -27,10 +25,9 @@
     "jspdf": "^3.0.2",
     "lucide-react": "^0.525.0",
     "next-themes": "^0.4.6",
-    "react": "^19.1.0", // Pastikan versi yang sesuai
-    "react-dom": "^19.1.0", // Pastikan versi yang sesuai
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
     "react-hook-form": "^7.61.1",
-    "react-router-dom": "^7.9.3",
     "recharts": "^3.1.0",
     "sonner": "^2.0.6",
     "tailwind-merge": "^3.3.1",
@@ -49,9 +46,5 @@
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.35.1",
     "vite": "^7.1.7"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "module" // Menggunakan module untuk menghindari masalah dengan import/export
+  }
 }
