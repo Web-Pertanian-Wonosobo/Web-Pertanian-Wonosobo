@@ -1,35 +1,50 @@
 import { useState } from "react";
 import { Navigation } from "../components/Navigation";
 import { AdminNavigation } from "../components/AdminNavigation";
+import { LoginRegister } from "../components/LoginRegister";
 import { PageRouter } from "../components/PageRouter";
 
 export default function App() {
-  const [currentPage, setCurrentPage] = useState("loginregister"); // arahkan ke loginregister saat pertama kali
-  const [userRole, setUserRole] = useState<"farmer" | "admin">("farmer");
+  // Role awal: guest (belum login)
+  const [userRole, setUserRole] = useState<"guest" | "farmer" | "admin">("guest");
+  const [currentPage, setCurrentPage] = useState("dashboard"); // halaman default
 
-  const handlePageChange = (page: string) => {
-    setCurrentPage(page);
-  };
+  const handlePageChange = (page: string) => setCurrentPage(page);
 
-  const handleRoleChange = (role: "farmer" | "admin") => {
-    setUserRole(role);
-    setCurrentPage("dashboard"); // opsional: arahkan ke dashboard setelah ganti role
-  };
+  const handleRoleChange = (role: "guest" | "farmer" | "admin") => {
+  setUserRole(role);
+  setCurrentPage(
+    role === "admin" ? "admin-dashboard" : "dashboard"
+  );
+};
+
 
   const handleLogout = () => {
-    setUserRole("farmer");
-    setCurrentPage("loginregister"); // arahkan ke loginregister saat logout
+    setUserRole("guest");
+    setCurrentPage("dashboard");
   };
 
-  // Tampilkan aplikasi utama jika sudah login
+  // Pilih sidebar sesuai role
   const NavigationComponent =
     userRole === "admin" ? AdminNavigation : Navigation;
+
+  // Kalau sedang di halaman login/register
+  if (currentPage === "loginregister") {
+    return (
+      <LoginRegister
+        onLogin={(role) => handleRoleChange(role)}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex">
       <NavigationComponent
         currentPage={currentPage}
         onPageChange={handlePageChange}
+        userRole={userRole}
+        onLogout={handleLogout}
+        onLoginPage={() => setCurrentPage("loginregister")}
       />
 
       <main className="flex-1 md:ml-0">
@@ -37,7 +52,7 @@ export default function App() {
           currentPage={currentPage}
           userRole={userRole}
           onNavigate={handlePageChange}
-          onRoleChange={handleRoleChange}   // <-- Tambahkan ini
+          onRoleChange={handleRoleChange}
           onLogout={handleLogout}
         />
       </main>
