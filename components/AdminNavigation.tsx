@@ -1,39 +1,59 @@
-import React from 'react';
-import { Home, Users, Database, BarChart3, Settings, Menu, Shield } from 'lucide-react';
-import { Button } from './ui/button';
-import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from './ui/sheet';
-import { Badge } from './ui/badge';
+import React from "react";
+import {
+  Home,
+  Users,
+  Database,
+  BarChart3,
+  Settings,
+  Menu,
+  Shield,
+  LogOut,
+} from "lucide-react";
+import { Button } from "./ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+  SheetTitle,
+  SheetDescription,
+} from "./ui/sheet";
+import { Badge } from "./ui/badge";
 
 interface AdminNavigationProps {
   currentPage: string;
   onPageChange: (page: string) => void;
+  onLogout: () => void;
 }
 
-const navigationItems = [
-  { id: 'admin-dashboard', label: 'Dashboard Admin', icon: Home },
-  { id: 'user-management', label: 'Kelola Pengguna', icon: Users },
-  { id: 'data-management', label: 'Data Pertanian', icon: Database },
-  { id: 'analytics', label: 'Analytics', icon: BarChart3 },
-  { id: 'admin-settings', label: 'Pengaturan', icon: Settings },
+const adminMenu = [
+  { id: "admin-dashboard", label: "Dashboard", icon: Home },
+  { id: "user-management", label: "Manajemen Pengguna", icon: Users },
+  { id: "data-management", label: "Data Pertanian", icon: Database },
+  { id: "analytics", label: "Analytics", icon: BarChart3 },
+  { id: "admin-settings", label: "Pengaturan", icon: Settings },
 ];
 
-export function AdminNavigation({ currentPage, onPageChange }: AdminNavigationProps) {
-  const NavigationContent = () => (
-    <nav className="flex flex-col space-y-2">
-      {navigationItems.map((item) => {
+export function AdminNavigation({
+  currentPage,
+  onPageChange,
+  onLogout,
+}: AdminNavigationProps) {
+  const NavigationLinks = () => (
+    <nav className="flex flex-col space-y-1">
+      {adminMenu.map((item) => {
         const Icon = item.icon;
+        const isActive = currentPage === item.id;
         return (
           <Button
             key={item.id}
-            variant={currentPage === item.id ? "default" : "ghost"}
-            className="justify-start w-full"
+            variant={isActive ? "default" : "ghost"}
+            className={`justify-start w-full text-base ${
+              isActive ? "font-semibold" : "text-muted-foreground"
+            }`}
             onClick={() => onPageChange(item.id)}
           >
-            <Icon className="w-4 h-4 mr-3" />
+            <Icon className="w-4 h-4 mr-2" />
             {item.label}
-            {item.id === 'user-management' && (
-              <Badge variant="secondary" className="ml-auto">42</Badge>
-            )}
           </Button>
         );
       })}
@@ -42,20 +62,35 @@ export function AdminNavigation({ currentPage, onPageChange }: AdminNavigationPr
 
   return (
     <>
-      {/* Desktop Sidebar */}
-      <aside className="hidden md:flex w-64 bg-card border-r p-6 flex-col">
+      {/* 🖥️ Desktop Sidebar */}
+      <aside className="hidden md:flex w-64 bg-gray-50 border-r p-6 flex-col shadow-sm">
         <div className="mb-8">
           <div className="flex items-center space-x-2 mb-2">
             <Shield className="h-6 w-6 text-primary" />
             <h1 className="text-2xl font-bold text-primary">EcoScope</h1>
           </div>
-          <p className="text-muted-foreground">Admin Panel</p>
-          <Badge variant="destructive" className="mt-2">Administrator</Badge>
+          <p className="text-sm text-gray-500">Panel Administrator</p>
+          <Badge variant="destructive" className="mt-2">
+            Admin Mode
+          </Badge>
         </div>
-        <NavigationContent />
+
+        <NavigationLinks />
+
+        {/* 🚪 Tombol Logout */}
+        <div className="mt-auto pt-4 border-t">
+          <Button
+            variant="destructive"
+            className="w-full justify-start"
+            onClick={onLogout}
+          >
+            <LogOut className="w-4 h-4 mr-2" />
+            Logout
+          </Button>
+        </div>
       </aside>
 
-      {/* Mobile Header */}
+      {/* 📱 Mobile Navbar */}
       <header className="md:hidden flex items-center justify-between p-4 bg-card border-b">
         <div>
           <div className="flex items-center space-x-2">
@@ -64,25 +99,36 @@ export function AdminNavigation({ currentPage, onPageChange }: AdminNavigationPr
           </div>
           <p className="text-sm text-muted-foreground">Admin Panel</p>
         </div>
+
         <Sheet>
           <SheetTrigger asChild>
-            <button className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 w-10">
-              <Menu className="w-4 h-4" />
-              <span className="sr-only">Open admin navigation menu</span>
-            </button>
+            <Button variant="outline" size="icon">
+              <Menu className="h-4 w-4" />
+            </Button>
           </SheetTrigger>
           <SheetContent side="left" className="w-64">
             <SheetTitle>Admin Navigation</SheetTitle>
-            <SheetDescription>Navigate through the EcoScope Banyumas admin panel</SheetDescription>
-            <div className="mb-8 mt-6">
+            <SheetDescription>
+              Navigasi EcoScope Banyumas Admin
+            </SheetDescription>
+            <div className="mb-6 mt-4">
               <div className="flex items-center space-x-2 mb-2">
                 <Shield className="h-6 w-6 text-primary" />
                 <h1 className="text-2xl font-bold text-primary">EcoScope</h1>
               </div>
-              <p className="text-muted-foreground">Admin Panel</p>
-              <Badge variant="destructive" className="mt-2">Administrator</Badge>
+              <Badge variant="destructive">Admin Mode</Badge>
             </div>
-            <NavigationContent />
+            <NavigationLinks />
+            <div className="mt-6">
+              <Button
+                variant="destructive"
+                className="w-full justify-start"
+                onClick={onLogout}
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                Logout
+              </Button>
+            </div>
           </SheetContent>
         </Sheet>
       </header>
