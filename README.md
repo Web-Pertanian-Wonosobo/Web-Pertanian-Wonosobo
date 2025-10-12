@@ -57,17 +57,5 @@ php artisan migrate
 # Opsional: Jalankan seeder (data awal)
 # php artisan db:seed
 ```
-
-### 4\. Jalankan Aplikasi
-
-Akses proyek melalui *server development* bawaan Laravel.
-
-```bash
-php artisan serve
-
------
-
-```
-
-Apakah Anda ingin menambahkan bagian lain, misalnya tentang lisensi atau kontributor?
+n bagian lain, misalnya tentang lisensi atau kontributor?
 ```
