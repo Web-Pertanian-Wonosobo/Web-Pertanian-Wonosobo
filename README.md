@@ -1,69 +1,76 @@
-# React + TypeScript + Vite
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+# 📑 WEB PERTANIAN WONOSOBO
 
-Currently, two official plugins are available:
+Sistem Informasi Pertanian Wonosobo.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+---
 
-## Expanding the ESLint configuration
+## 🛠️ Teknologi yang Digunakan (Asumsi)
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+| Komponen | Bahasa / Framework | Versi Paling Mungkin |
+| :--- | :--- | :--- |
+| **Bahasa Utama** | PHP | 8.1+ |
+| **Framework** | Laravel | 10.x |
+| **Database** | MySQL / MariaDB | 5.7+ |
+| **Frontend** | Bootstrap | 5.x |
 
-```js
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+---
 
-      // Remove tseslint.configs.recommended and replace with this
-      ...tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      ...tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      ...tseslint.configs.stylisticTypeChecked,
+## 🚀 Panduan Instalasi Cepat
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+Asumsi: Anda telah menginstal **Git**, **PHP 8.1+**, **Composer**, dan **MySQL**.
+
+### 1. Kloning & Dependensi
+
+Kloning repositori, pindah ke *branch* `nanta`, dan instal semua pustaka yang diperlukan.
+
+```bash
+# Kloning dan pindah branch
+git clone [https://github.com/Web-Pertanian-Wonosobo/Web-Pertanian-Wonosobo.git](https://github.com/Web-Pertanian-Wonosobo/Web-Pertanian-Wonosobo.git)
+cd Web-Pertanian-Wonosobo
+git checkout nanta
+
+# Instal pustaka PHP via Composer
+composer install
+````
+
+### 2\. Konfigurasi Lingkungan (.env)
+
+Buat file konfigurasi `.env` dan buat kunci aplikasi. **JANGAN LUPA** sesuaikan `DB_DATABASE`, `DB_USERNAME`, dan `DB_PASSWORD` di file `.env`.
+
+```bash
+# Buat file .env dari contoh
+cp .env.example .env
+
+# Buat kunci aplikasi Laravel
+php artisan key:generate
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### 3\. Migrasi Database
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+Jalankan skrip untuk membuat tabel dan mengisi data awal.
 
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+# Jalankan migrasi tabel
+php artisan migrate
+
+# Opsional: Jalankan seeder (data awal)
+# php artisan db:seed
+```
+
+### 4\. Jalankan Aplikasi
+
+Akses proyek melalui *server development* bawaan Laravel.
+
+```bash
+php artisan serve
+```
+
+Aplikasi kini tersedia di **`http://127.0.0.1:8000`**.
+
+-----
+
+```
+
+Apakah Anda ingin menambahkan bagian lain, misalnya tentang lisensi atau kontributor?
 ```
