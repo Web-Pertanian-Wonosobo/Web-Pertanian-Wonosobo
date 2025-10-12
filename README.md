@@ -64,9 +64,6 @@ Akses proyek melalui *server development* bawaan Laravel.
 
 ```bash
 php artisan serve
-```
-
-Aplikasi kini tersedia di **`http://127.0.0.1:8000`**.
 
 -----
 
