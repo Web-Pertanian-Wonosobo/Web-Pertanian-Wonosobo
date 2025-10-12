@@ -57,5 +57,3 @@ php artisan migrate
 # Opsional: Jalankan seeder (data awal)
 # php artisan db:seed
 ```
-n bagian lain, misalnya tentang lisensi atau kontributor?
-```
