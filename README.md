@@ -5,7 +5,7 @@ Sistem Informasi Pertanian Wonosobo.
 
 ---
 
-## 🛠️ Teknologi yang Digunakan (Asumsi)
+## 🛠️ Teknologi yang Digunakan
 
 | Komponen | Bahasa / Framework | Versi Paling Mungkin |
 | :--- | :--- | :--- |
