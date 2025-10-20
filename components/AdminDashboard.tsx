@@ -1,8 +1,18 @@
 import React, { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "./ui/card";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "./ui/tabs";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import {
@@ -51,7 +61,9 @@ interface AdminDashboardProps {
   onNavigate: (page: string) => void;
 }
 
-export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
+export function AdminDashboard({
+  onNavigate,
+}: AdminDashboardProps) {
   const [searchUser, setSearchUser] = useState("");
   const [searchData, setSearchData] = useState("");
   const [filterRole, setFilterRole] = useState("all");
@@ -173,25 +185,59 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
   const monthlyDataChart = [
     { month: "Jan", users: 1200, alerts: 45, dataPoints: 8500 },
     { month: "Feb", users: 1350, alerts: 38, dataPoints: 9200 },
-    { month: "Mar", users: 1480, alerts: 52, dataPoints: 10100 },
-    { month: "Apr", users: 1650, alerts: 41, dataPoints: 11300 },
-    { month: "Mei", users: 1820, alerts: 35, dataPoints: 12800 },
-    { month: "Jun", users: 2100, alerts: 48, dataPoints: 14200 },
-    { month: "Jul", users: 2456, alerts: 42, dataPoints: 15678 },
+    {
+      month: "Mar",
+      users: 1480,
+      alerts: 52,
+      dataPoints: 10100,
+    },
+    {
+      month: "Apr",
+      users: 1650,
+      alerts: 41,
+      dataPoints: 11300,
+    },
+    {
+      month: "Mei",
+      users: 1820,
+      alerts: 35,
+      dataPoints: 12800,
+    },
+    {
+      month: "Jun",
+      users: 2100,
+      alerts: 48,
+      dataPoints: 14200,
+    },
+    {
+      month: "Jul",
+      users: 2456,
+      alerts: 42,
+      dataPoints: 15678,
+    },
   ];
 
   const filteredUsers = users.filter((user) => {
     const matchesSearch =
-      user.name.toLowerCase().includes(searchUser.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchUser.toLowerCase());
-    const matchesRole = filterRole === "all" || user.role === filterRole;
+      user.name
+        .toLowerCase()
+        .includes(searchUser.toLowerCase()) ||
+      user.email
+        .toLowerCase()
+        .includes(searchUser.toLowerCase());
+    const matchesRole =
+      filterRole === "all" || user.role === filterRole;
     return matchesSearch && matchesRole;
   });
 
   const filteredData = agriculturalData.filter(
     (data) =>
-      data.commodity.toLowerCase().includes(searchData.toLowerCase()) ||
-      data.region.toLowerCase().includes(searchData.toLowerCase())
+      data.commodity
+        .toLowerCase()
+        .includes(searchData.toLowerCase()) ||
+      data.region
+        .toLowerCase()
+        .includes(searchData.toLowerCase()),
   );
 
   const getRoleColor = (role: string) => {
@@ -245,8 +291,12 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
   return (
     <div className="p-6 max-w-8xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold mb-2">Dashboard Administrator</h1>
-        <p className="text-muted-foreground">Kelola sistem EcoScope Banyumas</p>
+        <h1 className="text-3xl font-bold mb-2">
+          Dashboard Administrator
+        </h1>
+        <p className="text-muted-foreground">
+          Kelola sistem EcoScope Banyumas
+        </p>
       </div>
 
       {/* Stats Overview */}
@@ -255,11 +305,15 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Total Pengguna</p>
+                <p className="text-sm text-muted-foreground">
+                  Total Pengguna
+                </p>
                 <h3 className="text-2xl font-bold">
                   {dashboardStats.totalUsers.toLocaleString()}
                 </h3>
-                <p className="text-xs text-green-600">+12% dari bulan lalu</p>
+                <p className="text-xs text-green-600">
+                  +12% dari bulan lalu
+                </p>
               </div>
               <Users className="h-8 w-8 text-blue-500" />
             </div>
@@ -270,11 +324,15 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Petani Aktif</p>
+                <p className="text-sm text-muted-foreground">
+                  Petani Aktif
+                </p>
                 <h3 className="text-2xl font-bold">
                   {dashboardStats.activeFarmers.toLocaleString()}
                 </h3>
-                <p className="text-xs text-green-600">+8% dari bulan lalu</p>
+                <p className="text-xs text-green-600">
+                  +8% dari bulan lalu
+                </p>
               </div>
               <Database className="h-8 w-8 text-green-500" />
             </div>
@@ -285,11 +343,15 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Data Points</p>
+                <p className="text-sm text-muted-foreground">
+                  Data Points
+                </p>
                 <h3 className="text-2xl font-bold">
                   {dashboardStats.dataPoints.toLocaleString()}
                 </h3>
-                <p className="text-xs text-blue-600">+15% dari bulan lalu</p>
+                <p className="text-xs text-blue-600">
+                  +15% dari bulan lalu
+                </p>
               </div>
               <BarChart3 className="h-8 w-8 text-purple-500" />
             </div>
@@ -300,11 +362,15 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Alert Hari Ini</p>
+                <p className="text-sm text-muted-foreground">
+                  Alert Hari Ini
+                </p>
                 <h3 className="text-2xl font-bold">
                   {dashboardStats.alertsToday}
                 </h3>
-                <p className="text-xs text-orange-600">-3 dari kemarin</p>
+                <p className="text-xs text-orange-600">
+                  -3 dari kemarin
+                </p>
               </div>
               <AlertTriangle className="h-8 w-8 text-orange-500" />
             </div>
@@ -333,12 +399,16 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                       {alert.type === "slope"
                         ? "Risiko Longsor"
                         : alert.type === "weather"
-                        ? "Cuaca Ekstrem"
-                        : "Fluktuasi Harga"}
+                          ? "Cuaca Ekstrem"
+                          : "Fluktuasi Harga"}
                     </strong>
-                    <span className="ml-2">di {alert.location}</span>
+                    <span className="ml-2">
+                      di {alert.location}
+                    </span>
                   </div>
-                  <span className="text-xs opacity-75">{alert.time}</span>
+                  <span className="text-xs opacity-75">
+                    {alert.time}
+                  </span>
                 </AlertDescription>
               </Alert>
             ))}
@@ -378,7 +448,9 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
       {/* Management Tabs */}
       <Tabs defaultValue="users" className="space-y-6">
         <TabsList>
-          <TabsTrigger value="users">Kelola Pengguna</TabsTrigger>
+          <TabsTrigger value="users">
+            Kelola Pengguna
+          </TabsTrigger>
           <TabsTrigger value="data">Data Pertanian</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
         </TabsList>
@@ -403,19 +475,28 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                     <Input
                       placeholder="Cari nama atau email..."
                       value={searchUser}
-                      onChange={(e) => setSearchUser(e.target.value)}
+                      onChange={(e) =>
+                        setSearchUser(e.target.value)
+                      }
                       className="pl-10"
                     />
                   </div>
                 </div>
-                <Select value={filterRole} onValueChange={setFilterRole}>
+                <Select
+                  value={filterRole}
+                  onValueChange={setFilterRole}
+                >
                   <SelectTrigger className="w-48">
                     <SelectValue placeholder="Filter Role" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Semua Role</SelectItem>
+                    <SelectItem value="all">
+                      Semua Role
+                    </SelectItem>
                     <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="farmer">Petani</SelectItem>
+                    <SelectItem value="farmer">
+                      Petani
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -442,14 +523,24 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                         </TableCell>
                         <TableCell>{user.email}</TableCell>
                         <TableCell>
-                          <Badge className={getRoleColor(user.role)}>
-                            {user.role === "admin" ? "Admin" : "Petani"}
+                          <Badge
+                            className={getRoleColor(user.role)}
+                          >
+                            {user.role === "admin"
+                              ? "Admin"
+                              : "Petani"}
                           </Badge>
                         </TableCell>
                         <TableCell>{user.location}</TableCell>
                         <TableCell>
-                          <Badge className={getStatusColor(user.status)}>
-                            {user.status === "active" ? "Aktif" : "Tidak Aktif"}
+                          <Badge
+                            className={getStatusColor(
+                              user.status,
+                            )}
+                          >
+                            {user.status === "active"
+                              ? "Aktif"
+                              : "Tidak Aktif"}
                           </Badge>
                         </TableCell>
                         <TableCell>{user.joinDate}</TableCell>
@@ -498,7 +589,9 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                     <Input
                       placeholder="Cari komoditas atau daerah..."
                       value={searchData}
-                      onChange={(e) => setSearchData(e.target.value)}
+                      onChange={(e) =>
+                        setSearchData(e.target.value)
+                      }
                       className="pl-10"
                     />
                   </div>
@@ -526,7 +619,8 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                           {data.commodity}
                         </TableCell>
                         <TableCell>
-                          Rp {data.currentPrice.toLocaleString()}
+                          Rp{" "}
+                          {data.currentPrice.toLocaleString()}
                         </TableCell>
                         <TableCell className="flex items-center">
                           <span className="mr-2">
@@ -535,8 +629,8 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                           {data.trend === "up"
                             ? "Naik"
                             : data.trend === "down"
-                            ? "Turun"
-                            : "Stabil"}
+                              ? "Turun"
+                              : "Stabil"}
                         </TableCell>
                         <TableCell>{data.region}</TableCell>
                         <TableCell>
@@ -545,8 +639,8 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                               data.supply === "Normal"
                                 ? "default"
                                 : data.supply === "Tinggi"
-                                ? "secondary"
-                                : "destructive"
+                                  ? "secondary"
+                                  : "destructive"
                             }
                           >
                             {data.supply}
