@@ -1,7 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import weather, market  # Removed predict temporarily
-# from app.routers import predict  # Uncomment when ML dependencies are installed
+from app.routers import weather, market  
 
 app = FastAPI(
     title="Web Petani Wonosobo API",
@@ -12,7 +11,7 @@ app = FastAPI(
 # CORS Configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, specify exact origins
+    allow_origins=["*"],  
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

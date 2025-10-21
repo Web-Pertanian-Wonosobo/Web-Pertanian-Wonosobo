@@ -25,22 +25,31 @@ def fetch_weather_data():
     records = []
 
     try:
-        # Struktur API BMKG umumnya: data -> area -> parameter -> timerange
-        for area in data["data"]["area"]:
-            location = area.get("name", {}).get("value", "Unknown")
-            params = area.get("parameter", [])
+        # Struktur API BMKG terbaru umumnya seperti ini:
+        # {
+        #   "lokasi": {"id": "...", "kecamatan": "...", "koordinat": {...}},
+        #   "cuaca": [
+        #       {"datetime": "2025-10-21T00:00:00Z", "t": 28, "hu": 85, "weather": "Cerah"},
+        #       ...
+        #   ]
+        # }
 
-            # Ambil parameter suhu (id == "t")
-            for param in params:
-                if param.get("id") == "t":
-                    for ts in param.get("timerange", []):
-                        records.append({
-                            "ds": ts.get("datetime"),
-                            "temperature": float(ts.get("value", 0)),
-                            "humidity": None,
-                            "rainfall": None,
-                            "location": location
-                        })
+        lokasi = data.get("lokasi", {})
+        location_name = lokasi.get("kecamatan") or lokasi.get("id", "Unknown")
+
+        cuaca_list = data.get("cuaca", [])
+        if not isinstance(cuaca_list, list):
+            raise ValueError("Struktur BMKG tidak sesuai (cuaca bukan list)")
+
+        for item in cuaca_list:
+            records.append({
+                "ds": item.get("datetime"),
+                "temperature": float(item.get("t", 0)),
+                "humidity": float(item.get("hu", 0)),
+                "rainfall": None,
+                "location": location_name
+            })
+
     except Exception as e:
         logging.error("Gagal parsing data BMKG: %s", traceback.format_exc())
         raise RuntimeError(f"Struktur JSON BMKG tidak sesuai: {e}")
@@ -123,5 +132,4 @@ def predict_weather(db: Session, days_ahead: int = 3):
         predictions.append(pred)
 
     db.commit()
-
     return predictions
