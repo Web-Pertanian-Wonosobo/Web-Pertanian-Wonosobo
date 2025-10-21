@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 class BapanasService:
     """Service untuk mengambil data harga dari Badan Pangan Nasional (Bapanas)"""
-    BASE_URL = "https://panelinfo.pangan.go.id/api"
+    BASE_URL = "https://disdagkopukm.wonosobokab.go.id/api/"
     TIMEOUT = 30.0
     
     # Mapping komoditas dengan ID Bapanas
@@ -285,4 +285,58 @@ async def get_available_commodities():
         "success": True,
         "data": BapanasService.COMMODITY_MAPPING,
         "total": len(BapanasService.COMMODITY_MAPPING)
+    }
+
+# Endpoint harga real-time dari API Bapanas
+
+# Endpoint harga real-time dari API Disdagkopukm
+@router.get("/realtime-price")
+async def get_realtime_price(komoditas: str = Query(None), id: int = Query(None)):
+    import httpx
+    base_url = "https://disdagkopukm.wonosobokab.go.id/api"
+    async with httpx.AsyncClient() as client:
+        if id:
+            url = f"{base_url}/komoditas/{id}"
+            response = await client.get(url)
+            if response.status_code != 200:
+                return {"success": False, "error": "Gagal mengambil data komoditas berdasarkan id"}
+            return {"success": True, "data": response.json()}
+        else:
+            url = f"{base_url}/komoditas"
+            response = await client.get(url)
+            if response.status_code != 200:
+                return {"success": False, "error": "Gagal mengambil data daftar komoditas"}
+            all_data = response.json()
+            # Filter berdasarkan nama jika parameter komoditas diberikan
+            if komoditas:
+                filtered = [item for item in all_data if komoditas.lower() in item.get("nama", "").lower()]
+                if not filtered:
+                    return {"success": False, "error": "Komoditas tidak ditemukan"}
+                return {"success": True, "data": filtered}
+            return {"success": True, "data": all_data}
+
+# Endpoint prediksi harga AI
+@router.get("/predict-price")
+def predict_price(komoditas: str = Query(...), tanggal: str = Query(...)):
+    import pickle
+    import pandas as pd
+    import os
+    # Path model
+    model_path = os.path.join(os.path.dirname(__file__), f"../../model_{komoditas.replace(' ', '_')}.pkl")
+    if not os.path.exists(model_path):
+        return {"success": False, "error": "Model tidak ditemukan"}
+
+    # Load model
+    with open(model_path, "rb") as f:
+        model = pickle.load(f)
+
+    # Konversi tanggal ke ordinal
+    tanggal_num = pd.to_datetime(tanggal).toordinal()
+    prediksi = model.predict([[tanggal_num]])[0]
+
+    return {
+        "success": True,
+        "komoditas": komoditas,
+        "tanggal": tanggal,
+        "harga_prediksi": int(prediksi)
     }
