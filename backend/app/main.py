@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from app.routers import weather, market
+from app.routers import weather, market, admin, public
 
 app = FastAPI(title="Web Petani Wonosobo API")
 
