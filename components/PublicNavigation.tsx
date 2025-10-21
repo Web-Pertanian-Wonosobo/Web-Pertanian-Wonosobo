@@ -2,51 +2,48 @@ import React from 'react';
 import { Button } from './ui/button';
 import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from './ui/sheet';
 import { 
-  LayoutDashboard, 
-  Users, 
-  Settings, 
-  LogOut, 
+  MapPin, 
+  CloudRain, 
+  TrendingUp, 
+  Mountain,
   Menu,
-  MapPin,
-  DollarSign,
-  User
+  Home,
+  User,
+  Cloud
 } from 'lucide-react';
 
-interface AdminNavigationProps {
+interface PublicNavigationProps {
   currentPage: string;
   onPageChange: (page: string) => void;
   isLoggedIn?: boolean;
 }
 
-export function AdminNavigation({ currentPage, onPageChange, isLoggedIn }: AdminNavigationProps) {
+export function PublicNavigation({ currentPage, onPageChange, isLoggedIn }: PublicNavigationProps) {
   const menuItems = [
-    { id: 'admin-dashboard', label: 'Dashboard Admin', icon: LayoutDashboard },
-    { id: 'price-data-management', label: 'Kelola Data Harga', icon: DollarSign },
-    { id: 'user-management', label: 'Kelola User', icon: Users },
+    { id: 'dashboard', label: 'Dashboard', icon: Home },
+    { id: 'weather', label: 'Prediksi Cuaca', icon: CloudRain },
+    { id: 'bmkg-weather', label: 'Data BMKG', icon: Cloud },
+    { id: 'price-prediction', label: 'Prediksi Harga', icon: TrendingUp },
+    { id: 'slope-analysis', label: 'Analisis Lereng', icon: Mountain },
   ];
-
-  const handleLogout = () => {
-    onPageChange('dashboard'); // Kembali ke halaman publik
-    // Logout logic akan ditangani di PageRouter
-  };
 
   const NavContent = () => (
     <>
       <div className="p-6 border-b">
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-3"> 
           {/* <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center">
             <MapPin className="w-5 h-5 text-white" />
           </div> */}
-         <div className="inline-flex items-center justify-center w-20 h-24 rounded-full">
+          <div className="inline-flex items-center justify-center w-20 h-24 rounded-full">
         <img 
         src="src/assets/logo.svg" 
         alt="EcoScope" 
         style={{ width: '75px', height: '75px', objectFit: 'contain' }} 
           />
-      </div>
+      </div> 
           <div>
             <h2 className="font-semibold text-gray-900">EcoScope Wonosobo</h2>
-            <p className="text-sm text-gray-600">Panel Admin</p>
+            <p className="text-sm text-gray-600">Sistem Monitoring Pertanian</p>
           </div>
         </div>
       </div>
@@ -73,11 +70,11 @@ export function AdminNavigation({ currentPage, onPageChange, isLoggedIn }: Admin
       <div className="p-4 border-t">
         <Button 
           variant="outline" 
-          className="w-full text-red-600 hover:text-red-700 hover:bg-red-50"
-          onClick={handleLogout}
+          className="w-full"
+          onClick={() => onPageChange('admin-login')}
         >
-          <LogOut className="w-4 h-4 mr-2" />
-          Logout
+          <User className="w-4 h-4 mr-2" />
+          Login Admin
         </Button>
       </div>
     </>
@@ -92,7 +89,7 @@ export function AdminNavigation({ currentPage, onPageChange, isLoggedIn }: Admin
             <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center">
               <MapPin className="w-5 h-5 text-white" />
             </div>
-            <h1 className="font-semibold text-gray-900">Admin Panel</h1>
+            <h1 className="font-semibold text-gray-900">EcoScope Wonosobo</h1>
           </div>
           
           <Sheet>
@@ -102,9 +99,9 @@ export function AdminNavigation({ currentPage, onPageChange, isLoggedIn }: Admin
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="w-80 p-0">
-              <SheetTitle className="sr-only">Menu Navigasi Admin</SheetTitle>
+              <SheetTitle className="sr-only">Menu Navigasi</SheetTitle>
               <SheetDescription className="sr-only">
-                Menu navigasi untuk panel admin EcoScope Wonosobo
+                Menu navigasi untuk mengakses fitur-fitur EcoScope Wonosobo
               </SheetDescription>
               <NavContent />
             </SheetContent>
