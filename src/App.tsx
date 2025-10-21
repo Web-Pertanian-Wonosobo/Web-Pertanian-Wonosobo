@@ -42,7 +42,7 @@ export default function App() {
     }
     
     // Jika berpindah ke halaman public
-    if (['dashboard', 'weather', 'price-prediction', 'slope-analysis'].includes(page)) {
+    if (['dashboard', 'weather', 'bmkg-weather', 'price-prediction', 'slope-analysis'].includes(page)) {
       setAppMode('public');
     }
   };

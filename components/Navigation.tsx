@@ -1,5 +1,5 @@
 import React from "react";
-import { Home, Mountain, CloudSun, TrendingUp, LogIn, LogOut, User, Menu } from "lucide-react";
+import { Home, Mountain, CloudSun, TrendingUp, LogIn, LogOut, User, Menu, Cloud } from "lucide-react";
 import { Button } from "./ui/button";
 import {
   Sheet,
@@ -21,6 +21,7 @@ const navigationItems = [
   { id: "dashboard", label: "Dashboard", icon: Home },
   { id: "slope", label: "Analisis Lereng", icon: Mountain },
   { id: "weather", label: "Prediksi Cuaca", icon: CloudSun },
+  { id: "bmkg-weather", label: "Data BMKG", icon: Cloud },
   { id: "price", label: "Prediksi Harga", icon: TrendingUp },
 ];
 
