@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import weather, market  
+from app.routers import weather, market
 
 app = FastAPI(
     title="Web Petani Wonosobo API",

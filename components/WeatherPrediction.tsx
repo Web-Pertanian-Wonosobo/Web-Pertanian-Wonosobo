@@ -866,18 +866,18 @@ export function WeatherPrediction() {
             )}
           </div>
 
-          {/* Fallback: Tampilan prediksi 3 hari dari backend ML jika BMKG tidak tersedia */}
-          {!bmkgDetailData && threeDayPredictions && threeDayPredictions.length > 0 && (
-            <>
-              <div className="mb-4 flex items-center justify-between">
-                <Badge variant="outline" className="bg-yellow-50 text-yellow-700">
-                  <Zap className="h-3 w-3 mr-1" />
-                  Fallback: Prediksi dari Backend ML
-                </Badge>
-                <span className="text-sm text-muted-foreground">
-                  Model: {threeDayPredictions[0]?.source}
-                </span>
-              </div>
+          {/* Tampilan menggunakan prediksi 3 hari dari backend API */}
+          <div className="mb-4 flex items-center justify-between">
+            <Badge variant="outline" className="bg-blue-50 text-blue-700">
+              <Zap className="h-3 w-3 mr-1" />
+              Prediksi 3 Hari dari Backend ML
+            </Badge>
+            {threeDayPredictions && threeDayPredictions.length > 0 && (
+              <span className="text-sm text-muted-foreground">
+                Model: {threeDayPredictions[0]?.source}
+              </span>
+            )}
+          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
             {threeDayPredictions && threeDayPredictions.length > 0 ? (
@@ -1046,10 +1046,8 @@ export function WeatherPrediction() {
               )}
             </CardContent>
           </Card>
-            </>
-          )}
         </TabsContent>
-
+ 
         <TabsContent value="ml-prediction">
           <Card>
             <CardHeader>

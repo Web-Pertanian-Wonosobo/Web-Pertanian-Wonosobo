@@ -107,7 +107,8 @@ export function BMKGWeatherDashboard() {
                 {bmkgData.location.provinsi}
               </p>
               <p className="text-xs text-muted-foreground mt-1">
-                📍 Koordinat: {bmkgData.location.lat}, {bmkgData.location.lon}
+                📍 Koordinat: {bmkgData.location.lat}, {bmkgData.location.lon} |
+                🕐 {bmkgData.location.timezone}
               </p>
             </div>
 
