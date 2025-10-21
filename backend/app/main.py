@@ -19,9 +19,9 @@ app.add_middleware(
 )
 
 # Include routers
-app.include_router(weather.router, prefix="/weather", tags=["Weather"])
-app.include_router(market.router, prefix="/market", tags=["Market"])
-# app.include_router(predict.router, prefix="/predict", tags=["Predict"])  # Temporarily disabled 
+app.include_router(weather.router)  # Router already has /weather prefix
+app.include_router(market.router)  # Router already has /market prefix
+# app.include_router(predict.router)  # Temporarily disabled 
 
 # Startup event - Start scheduler (optional, uncomment to enable auto-sync)
 # @app.on_event("startup")
