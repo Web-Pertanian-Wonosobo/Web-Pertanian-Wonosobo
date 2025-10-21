@@ -3,11 +3,12 @@ import pandas as pd
 from prophet import Prophet
 from sqlalchemy.orm import Session
 from datetime import datetime
+import logging
 
 from app.models.weather_model import WeatherData, WeatherPrediction
 
 # Endpoint BMKG Banjarnegara
-BMKG_ENDPOINT = "https://api.bmkg.go.id/publik/prakiraan-cuaca?adm4=33.04.06"
+BMKG_ENDPOINT = "https://api.bmkg.go.id/publik/prakiraan-cuaca?adm4=31.71.03.1001"
 
 # ---- 1. Ambil data cuaca dari API BMKG ----
 def fetch_weather_data():
@@ -73,7 +74,15 @@ def predict_weather(db: Session, days_ahead: int = 3):
     forecast = model.predict(future)
 
     results = forecast[["ds", "yhat", "yhat_lower", "yhat_upper"]].tail(days_ahead)
+    # Validate forecast columns to avoid cryptic KeyError messages (e.g. 'ds')
+    required_cols = {"ds", "yhat", "yhat_lower", "yhat_upper"}
+    present_cols = set(forecast.columns)
+    missing = required_cols - present_cols
+    if missing:
+        logging.error("Forecast columns missing: %s", present_cols)
+        raise RuntimeError(f"Missing forecast columns: {missing}")
 
+    results = forecast[["ds", "yhat", "yhat_lower", "yhat_upper"]].tail(days_ahead)
     predictions = []
     for _, row in results.iterrows():
         pred = WeatherPrediction(
