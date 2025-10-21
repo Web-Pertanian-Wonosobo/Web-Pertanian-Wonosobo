@@ -58,5 +58,5 @@ def fetch_and_save_market_data():
         return {"message": f"{count} data berhasil disimpan ke database."}
 
     except Exception as e:
-        print(f"❌ Gagal sinkronisasi data: {e}") # log error
+        print(f"❌ Gagal sinkronisasi data: {e}")
         return {"error": str(e)}
