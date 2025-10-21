@@ -2,10 +2,19 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from datetime import datetime
 from app.db import get_db
+from app.services.market_sync import fetch_and_save_market_data
 from app.models.market_model import MarketPrice
 from app.schemas.market_schema import MarketPriceCreate
 
 router = APIRouter(prefix="/market", tags=["Market Data"])
+
+@router.post("/sync")
+def sync_market_data():
+    """
+    Mengambil data dari API Kominfo dan menyimpannya ke database lokal.
+    """
+    fetch_and_save_market_data()
+    return {"message": "Sinkronisasi data dari API Kominfo selesai."}
 
 @router.post("/add")
 def add_market_price(price_data: MarketPriceCreate, db: Session = Depends(get_db)):
