@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
-import { Button } from "./ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import {
   Select,
@@ -14,13 +13,11 @@ import {
   Sun,
   Cloud,
   CloudRain,
-  CloudSnow,
   Zap,
   Thermometer,
   Droplets,
   Sprout,
   Calendar,
-  Download,
 } from "lucide-react";
 import {
   LineChart,
@@ -33,6 +30,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import { fetchWeatherPredictions } from "../src/services/weatherApi";
 
 const fetchBMKGData = async (adm4Code: string) => {
   const url = `https://api.bmkg.go.id/publik/prakiraan-cuaca?adm4=${adm4Code}`;
@@ -54,46 +52,9 @@ const fetchBMKGData = async (adm4Code: string) => {
   }
 };
 
-// Fungsi untuk menganalisis data cuaca dan memberikan rekomendasi AI
-const analyzeWithAI = (weatherData: any) => {
-  // === LOGIKA AI ANDA DI SINI ===
-  // Ini adalah data simulasi, perlu disesuaikan dengan output model AI Anda.
-  const monthlyPlantingPredictions = [
-    {
-      month: "Agustus 2025",
-      season: "Kemarau",
-      rainfall: 80,
-      temp: 26,
-      recommendations: [
-        { plant: "Jagung", suitability: "excellent", reason: "Cuaca kering ideal untuk jagung" },
-        { plant: "Kacang Tanah", suitability: "good", reason: "Toleran terhadap kekeringan" },
-        { plant: "Ubi Jalar", suitability: "good", reason: "Tahan kekeringan, hasil optimal" },
-      ],
-    },
-    {
-      month: "September 2025",
-      season: "Peralihan",
-      rainfall: 120,
-      temp: 27,
-      recommendations: [
-        { plant: "Cabai", suitability: "excellent", reason: "Cuaca mulai lembab, ideal untuk cabai" },
-        { plant: "Tomat", suitability: "good", reason: "Kelembaban cukup untuk pertumbuhan" },
-        { plant: "Bayam", suitability: "excellent", reason: "Sayuran hijau tumbuh optimal" },
-      ],
-    },
-    {
-      month: "Oktober 2025",
-      season: "Peralihan ke Hujan",
-      rainfall: 180,
-      temp: 26,
-      recommendations: [
-        { plant: "Padi", suitability: "excellent", reason: "Awal musim hujan, cocok untuk padi" },
-        { plant: "Kangkung", suitability: "excellent", reason: "Sayuran air, butuh kelembaban tinggi" },
-        { plant: "Kacang Panjang", suitability: "good", reason: "Curah hujan cukup untuk pertumbuhan" },
-      ],
-    },
-  ];
-  return monthlyPlantingPredictions;
+// Fetch ML predictions from backend
+const fetchBackendPredictions = async (days: number = 3) => {
+  return await fetchWeatherPredictions(days);
 };
 
 // Fungsi untuk mengkonversi data BMKG per 3 jam menjadi data harian
@@ -152,12 +113,15 @@ const getIconForWeather = (weatherDesc: string) => {
 export function WeatherPrediction() {
   const [selectedLocation, setSelectedLocation] = useState("33.07.01.2001");
   const [weatherData, setWeatherData] = useState<any>(null);
-  const [aiRecommendations, setAiRecommendations] = useState<any>(null);
+  const [backendPredictions, setBackendPredictions] = useState<any>(null);
+  const [threeDayPredictions, setThreeDayPredictions] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const loadData = async () => {
       setIsLoading(true);
+      
+      // Fetch BMKG data (real-time forecast) - sebagai fallback
       const data = await fetchBMKGData(selectedLocation);
 
       if (data) {
@@ -166,82 +130,45 @@ export function WeatherPrediction() {
         // Konversi data prakiraan per 3 jam menjadi data mingguan dan chart
         const processedData = convertForecastToWeekly(forecast);
         setWeatherData(processedData);
-        
-        // Panggil AI dengan data yang sudah diproses
-        const recommendations = analyzeWithAI(processedData);
-        setAiRecommendations(recommendations);
       } else {
         setWeatherData(null);
-        setAiRecommendations(null);
       }
+
+      // Fetch 3-day predictions for "Prakiraan 3 Harian" tab
+      const predictions3Day = await fetchBackendPredictions(3);
+      if (predictions3Day && predictions3Day.length > 0) {
+        // Convert prediction data to display format
+        const processedPredictions = predictions3Day.map((item: any) => {
+          const itemDate = new Date(item.date);
+          const avgTemp = item.predicted_temp;
+          return {
+            day: itemDate.toLocaleDateString("id-ID", { weekday: "short" }),
+            date: itemDate.toLocaleDateString("id-ID", { day: "numeric", month: "short" }),
+            fullDate: item.date,
+            temperature: avgTemp,
+            predicted_temp: item.predicted_temp,
+            lower_bound: item.lower_bound,
+            upper_bound: item.upper_bound,
+            source: item.source,
+            temp: `${avgTemp?.toFixed(0)}°C`,
+            tempRange: `${item.lower_bound?.toFixed(0)}-${item.upper_bound?.toFixed(0)}°C`,
+            weather: avgTemp > 30 ? "Panas" : avgTemp > 27 ? "Cerah" : avgTemp > 24 ? "Sejuk" : "Dingin",
+            plantAdvice: avgTemp > 30 ? "caution" : avgTemp > 27 ? "good" : "excellent",
+          };
+        });
+        setThreeDayPredictions(processedPredictions);
+      }
+
+      // Fetch 7-day ML predictions for "Prediksi AI/ML" tab
+      const predictions = await fetchBackendPredictions(7);
+      setBackendPredictions(predictions);
+      
       setIsLoading(false);
     };
     loadData();
   }, [selectedLocation]);
 
-  // Fungsi utilitas lainnya (getSuitabilityColor, dll) tetap sama
-  const getSuitabilityColor = (suitability: string) => {
-    switch (suitability) {
-      case "excellent":
-        return "bg-green-100 text-green-800 border-green-200";
-      case "good":
-        return "bg-blue-100 text-blue-800 border-blue-200";
-      case "caution":
-        return "bg-yellow-100 text-yellow-800 border-yellow-200";
-      default:
-        return "bg-gray-100 text-gray-800 border-gray-200";
-    }
-  };
-
-  const getSuitabilityText = (suitability: string) => {
-    switch (suitability) {
-      case "excellent":
-        return "Sangat Cocok";
-      case "good":
-        return "Cocok";
-      case "caution":
-        return "Hati-hati";
-      default:
-        return "";
-    }
-  };
-
-  const downloadPlantingGuide = () => {
-    if (!aiRecommendations) return;
-    
-    const content = aiRecommendations
-      .map(
-        (month: any) =>
-          `${month.month} (${month.season})\n` +
-          `Curah Hujan: ${month.rainfall}mm | Suhu: ${month.temp}°C\n` +
-          `Rekomendasi Tanaman:\n` +
-          month.recommendations
-            .map(
-              (rec: any) =>
-                `- ${rec.plant}: ${getSuitabilityText(rec.suitability)} (${
-                  rec.reason
-                })`
-            )
-            .join("\n") +
-          "\n\n"
-      )
-      .join("");
-
-    const blob = new Blob([`Panduan Tanam EcoScope Wonosobo\n\n${content}`], {
-      type: "text/plain",
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `panduan-tanam-${selectedLocation}-${
-      new Date().toISOString().split("T")[0]
-    }.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
-  
+  // Fungsi utilitas untuk plant advice
   const getPlantAdviceColor = (advice: string) => {
     switch (advice) {
       case "excellent":
@@ -297,7 +224,7 @@ export function WeatherPrediction() {
     );
   }
 
-  if (!weatherData || !aiRecommendations) {
+  if (!weatherData) {
     return (
       <div className="p-6 max-w-8xl mx-auto flex justify-center items-center h-screen">
         <p className="text-destructive-foreground">
@@ -311,10 +238,26 @@ export function WeatherPrediction() {
   return (
     <div className="p-6 max-w-8xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold mb-2">Prediksi Cuaca</h1>
-        <p className="text-muted-foreground">
-          Prakiraan cuaca dan saran waktu tanam dari BMKG
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold mb-2">Prediksi Cuaca</h1>
+            <p className="text-muted-foreground">
+              Prakiraan cuaca dan saran waktu tanam dari BMKG
+            </p>
+          </div>
+          <div className="flex items-center space-x-2">
+            {backendPredictions && backendPredictions.length > 0 ? (
+              <Badge className="bg-green-100 text-green-800 border-green-200">
+                <Zap className="h-3 w-3 mr-1" />
+                ML Active
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="text-gray-600">
+                ML Offline
+              </Badge>
+            )}
+          </div>
+        </div>
       </div>
 
       <div className="mb-6">
@@ -605,160 +548,400 @@ export function WeatherPrediction() {
       <Tabs defaultValue="weekly" className="space-y-6">
         <TabsList>
           <TabsTrigger value="weekly">Prakiraan 3 Harian</TabsTrigger>
+          <TabsTrigger value="ml-prediction">Prediksi AI/ML</TabsTrigger>
           <TabsTrigger value="monthly">Prediksi Bulanan</TabsTrigger>
           <TabsTrigger value="charts">Grafik Detail</TabsTrigger>
           <TabsTrigger value="history">Riwayat</TabsTrigger>
         </TabsList>
 
         <TabsContent value="weekly">
-          {/* Tampilan ini akan menggunakan data yang sudah diproses */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-4 mb-6">
-            {weatherData.weeklyWeather.map((day: any, index: number) => {
-              const Icon = getIconForWeather(day.weather);
-              return (
-                <Card key={index} className="text-center">
-                  <CardContent className="p-4">
-                    <div className="space-y-3">
-                      <div>
-                        <h3 className="font-medium">{day.day}</h3>
-                        <p className="text-xs text-muted-foreground">
-                          {day.date}
-                        </p>
-                      </div>
-                      <Icon className="h-8 w-8 mx-auto text-blue-500" />
-                      <div>
-                        <p className="text-sm font-medium">{day.weather}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {day.temp}
-                        </p>
-                      </div>
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-center space-x-1">
-                          <Droplets className="h-3 w-3 text-blue-500" />
-                          <span className="text-xs">{day.rain}mm</span>
+          {/* Tampilan menggunakan prediksi 3 hari dari backend API */}
+          <div className="mb-4 flex items-center justify-between">
+            <Badge variant="outline" className="bg-blue-50 text-blue-700">
+              <Zap className="h-3 w-3 mr-1" />
+              Prediksi 3 Hari dari Backend ML
+            </Badge>
+            {threeDayPredictions && threeDayPredictions.length > 0 && (
+              <span className="text-sm text-muted-foreground">
+                Model: {threeDayPredictions[0]?.source}
+              </span>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+            {threeDayPredictions && threeDayPredictions.length > 0 ? (
+              threeDayPredictions.map((day: any, index: number) => {
+                const Icon = getIconForWeather(day.weather);
+                return (
+                  <Card key={index} className="text-center border-2">
+                    <CardContent className="p-4">
+                      <div className="space-y-3">
+                        <div>
+                          <h3 className="font-medium">{day.day}</h3>
+                          <p className="text-xs text-muted-foreground">
+                            {day.date}
+                          </p>
                         </div>
-                        <div
-                          className={`px-2 py-1 rounded text-xs border flex items-center justify-center space-x-1 ${getPlantAdviceColor(
-                            day.plantAdvice
-                          )}`}
-                        >
-                          {getPlantAdviceIcon(day.plantAdvice)}
-                          <span>{getPlantAdviceText(day.plantAdvice)}</span>
+                        <Icon className="h-10 w-10 mx-auto text-blue-500" />
+                        <div>
+                          <p className="text-sm font-medium">{day.weather}</p>
+                          <p className="text-2xl font-bold text-orange-600">
+                            {day.temp}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Rentang: {day.tempRange}
+                          </p>
+                        </div>
+                        <div className="space-y-2">
+                          <div
+                            className={`px-2 py-1 rounded text-xs border flex items-center justify-center space-x-1 ${getPlantAdviceColor(
+                              day.plantAdvice
+                            )}`}
+                          >
+                            {getPlantAdviceIcon(day.plantAdvice)}
+                            <span>{getPlantAdviceText(day.plantAdvice)}</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
+                    </CardContent>
+                  </Card>
+                );
+              })
+            ) : weatherData && weatherData.weeklyWeather ? (
+              // Fallback to BMKG data if backend predictions not available
+              <>
+                <div className="col-span-full mb-2">
+                  <Badge variant="outline" className="bg-yellow-50 text-yellow-700">
+                    <Cloud className="h-3 w-3 mr-1" />
+                    Menggunakan data BMKG (Backend tidak tersedia)
+                  </Badge>
+                </div>
+                {weatherData.weeklyWeather.slice(0, 3).map((day: any, index: number) => {
+                  const Icon = getIconForWeather(day.weather);
+                  return (
+                    <Card key={index} className="text-center">
+                      <CardContent className="p-4">
+                        <div className="space-y-3">
+                          <div>
+                            <h3 className="font-medium">{day.day}</h3>
+                            <p className="text-xs text-muted-foreground">
+                              {day.date}
+                            </p>
+                          </div>
+                          <Icon className="h-8 w-8 mx-auto text-blue-500" />
+                          <div>
+                            <p className="text-sm font-medium">{day.weather}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {day.temp}
+                            </p>
+                          </div>
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-center space-x-1">
+                              <Droplets className="h-3 w-3 text-blue-500" />
+                              <span className="text-xs">{day.rain}mm</span>
+                            </div>
+                            <div
+                              className={`px-2 py-1 rounded text-xs border flex items-center justify-center space-x-1 ${getPlantAdviceColor(
+                                day.plantAdvice
+                              )}`}
+                            >
+                              {getPlantAdviceIcon(day.plantAdvice)}
+                              <span>{getPlantAdviceText(day.plantAdvice)}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </>
+            ) : (
+              <div className="col-span-full text-center py-8">
+                <Cloud className="h-12 w-12 mx-auto mb-3 text-muted-foreground opacity-50" />
+                <p className="text-muted-foreground">Data prediksi tidak tersedia</p>
+              </div>
+            )}
           </div>
 
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center">
-                <Thermometer className="h-5 w-5 mr-2" /> Detail Cuaca Hari Ini
+                <Thermometer className="h-5 w-5 mr-2" /> Detail Prediksi Hari Pertama
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="text-center p-4 bg-slate-50 rounded-lg">
-                  <Thermometer className="h-6 w-6 mx-auto mb-2 text-orange-500" />
-                  <p className="text-sm text-muted-foreground">Suhu</p>
-                  <p className="font-medium">
-                    {weatherData.weeklyWeather[0].temp}
+              {threeDayPredictions && threeDayPredictions.length > 0 ? (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="text-center p-4 bg-slate-50 rounded-lg">
+                    <Thermometer className="h-6 w-6 mx-auto mb-2 text-orange-500" />
+                    <p className="text-sm text-muted-foreground">Suhu Prediksi</p>
+                    <p className="font-medium">
+                      {threeDayPredictions[0].predicted_temp?.toFixed(1)}°C
+                    </p>
+                  </div>
+                  <div className="text-center p-4 bg-slate-50 rounded-lg">
+                    <Thermometer className="h-6 w-6 mx-auto mb-2 text-blue-500" />
+                    <p className="text-sm text-muted-foreground">Batas Bawah</p>
+                    <p className="font-medium">
+                      {threeDayPredictions[0].lower_bound?.toFixed(1)}°C
+                    </p>
+                  </div>
+                  <div className="text-center p-4 bg-slate-50 rounded-lg">
+                    <Thermometer className="h-6 w-6 mx-auto mb-2 text-red-500" />
+                    <p className="text-sm text-muted-foreground">Batas Atas</p>
+                    <p className="font-medium">
+                      {threeDayPredictions[0].upper_bound?.toFixed(1)}°C
+                    </p>
+                  </div>
+                  <div className="text-center p-4 bg-slate-50 rounded-lg">
+                    <Sprout className="h-6 w-6 mx-auto mb-2 text-green-500" />
+                    <p className="text-sm text-muted-foreground">Saran Tanam</p>
+                    <Badge className={getPlantAdviceColor(threeDayPredictions[0].plantAdvice)}>
+                      {getPlantAdviceText(threeDayPredictions[0].plantAdvice)}
+                    </Badge>
+                  </div>
+                </div>
+              ) : weatherData && weatherData.weeklyWeather && weatherData.weeklyWeather.length > 0 ? (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="text-center p-4 bg-slate-50 rounded-lg">
+                    <Thermometer className="h-6 w-6 mx-auto mb-2 text-orange-500" />
+                    <p className="text-sm text-muted-foreground">Suhu</p>
+                    <p className="font-medium">
+                      {weatherData.weeklyWeather[0].temp}
+                    </p>
+                  </div>
+                  <div className="text-center p-4 bg-slate-50 rounded-lg">
+                    <Droplets className="h-6 w-6 mx-auto mb-2 text-blue-500" />
+                    <p className="text-sm text-muted-foreground">Kelembaban</p>
+                    <p className="font-medium">
+                      {weatherData.weeklyWeather[0].humidity}%
+                    </p>
+                  </div>
+                  <div className="text-center p-4 bg-slate-50 rounded-lg">
+                    <CloudRain className="h-6 w-6 mx-auto mb-2 text-indigo-500" />
+                    <p className="text-sm text-muted-foreground">Curah Hujan</p>
+                    <p className="font-medium">
+                      {weatherData.weeklyWeather[0].rain} mm
+                    </p>
+                  </div>
+                  <div className="text-center p-4 bg-slate-50 rounded-lg">
+                    <Sprout className="h-6 w-6 mx-auto mb-2 text-green-500" />
+                    <p className="text-sm text-muted-foreground">Saran Tanam</p>
+                    <Badge className="bg-green-100 text-green-800">Baik</Badge>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-center text-muted-foreground">Detail tidak tersedia</p>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="ml-prediction">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <Zap className="h-5 w-5 mr-2 text-yellow-500" />
+                  Prediksi Suhu dengan Machine Learning
+                </div>
+                <Badge variant="outline" className="bg-blue-50">
+                  {backendPredictions && backendPredictions.length > 0
+                    ? backendPredictions[0]?.source || "ML Model"
+                    : "Loading..."}
+                </Badge>
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Prediksi suhu menggunakan algoritma Machine Learning berdasarkan data historis
+              </p>
+            </CardHeader>
+            <CardContent>
+              {!backendPredictions || backendPredictions.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">
+                    Prediksi ML tidak tersedia saat ini
                   </p>
                 </div>
-                <div className="text-center p-4 bg-slate-50 rounded-lg">
-                  <Droplets className="h-6 w-6 mx-auto mb-2 text-blue-500" />
-                  <p className="text-sm text-muted-foreground">Kelembaban</p>
-                  <p className="font-medium">
-                    {weatherData.weeklyWeather[0].humidity}%
-                  </p>
+              ) : (
+                <div className="space-y-6">
+                  {/* Prediction Cards */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {backendPredictions.map((pred: any, index: number) => {
+                      const predDate = new Date(pred.date);
+                      const dayName = predDate.toLocaleDateString("id-ID", {
+                        weekday: "short",
+                      });
+                      const dateStr = predDate.toLocaleDateString("id-ID", {
+                        day: "numeric",
+                        month: "short",
+                      });
+
+                      return (
+                        <Card key={index} className="border-2">
+                          <CardContent className="p-4">
+                            <div className="space-y-3">
+                              <div className="text-center">
+                                <h3 className="font-semibold">{dayName}</h3>
+                                <p className="text-xs text-muted-foreground">
+                                  {dateStr}
+                                </p>
+                              </div>
+                              
+                              <div className="text-center">
+                                <Thermometer className="h-10 w-10 mx-auto mb-2 text-orange-500" />
+                                <div className="text-2xl font-bold">
+                                  {pred.predicted_temp?.toFixed(1)}°C
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  Prediksi Suhu
+                                </p>
+                              </div>
+
+                              <div className="pt-3 border-t space-y-2">
+                                <div className="flex justify-between items-center text-sm">
+                                  <span className="text-muted-foreground">
+                                    Rentang:
+                                  </span>
+                                  <span className="font-medium">
+                                    {pred.lower_bound?.toFixed(1)}° -{" "}
+                                    {pred.upper_bound?.toFixed(1)}°C
+                                  </span>
+                                </div>
+                                <div className="w-full bg-gray-200 rounded-full h-2">
+                                  <div
+                                    className="bg-gradient-to-r from-blue-400 to-orange-400 h-2 rounded-full"
+                                    style={{
+                                      width: `${
+                                        ((pred.predicted_temp - pred.lower_bound) /
+                                          (pred.upper_bound - pred.lower_bound)) *
+                                        100
+                                      }%`,
+                                    }}
+                                  ></div>
+                                </div>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+
+                  {/* Chart */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Grafik Prediksi Suhu</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ResponsiveContainer width="100%" height={300}>
+                        <LineChart
+                          data={backendPredictions.map((pred: any) => ({
+                            date: new Date(pred.date).toLocaleDateString("id-ID", {
+                              day: "numeric",
+                              month: "short",
+                            }),
+                            suhu: pred.predicted_temp,
+                            min: pred.lower_bound,
+                            max: pred.upper_bound,
+                          }))}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="date" />
+                          <YAxis />
+                          <Tooltip
+                            formatter={(value: any) => [
+                              `${value.toFixed(1)}°C`,
+                              "",
+                            ]}
+                          />
+                          <Line
+                            type="monotone"
+                            dataKey="max"
+                            stroke="#fbbf24"
+                            strokeWidth={1}
+                            strokeDasharray="5 5"
+                            dot={false}
+                            name="Batas Atas"
+                          />
+                          <Line
+                            type="monotone"
+                            dataKey="suhu"
+                            stroke="#f59e0b"
+                            strokeWidth={3}
+                            dot={{ fill: "#f59e0b", r: 4 }}
+                            name="Prediksi"
+                          />
+                          <Line
+                            type="monotone"
+                            dataKey="min"
+                            stroke="#60a5fa"
+                            strokeWidth={1}
+                            strokeDasharray="5 5"
+                            dot={false}
+                            name="Batas Bawah"
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </CardContent>
+                  </Card>
+
+                  {/* Info Box */}
+                  <Card className="bg-blue-50 border-blue-200">
+                    <CardContent className="p-4">
+                      <div className="flex items-start space-x-3">
+                        <Zap className="h-5 w-5 text-blue-600 mt-0.5" />
+                        <div className="flex-1">
+                          <h4 className="font-medium text-blue-900 mb-1">
+                            Tentang Prediksi ML
+                          </h4>
+                          <p className="text-sm text-blue-800">
+                            Prediksi ini menggunakan algoritma machine learning yang
+                            dilatih dengan data historis cuaca. Rentang suhu (batas
+                            atas dan bawah) menunjukkan tingkat kepercayaan prediksi.
+                            Semakin sempit rentang, semakin akurat prediksinya.
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
                 </div>
-                <div className="text-center p-4 bg-slate-50 rounded-lg">
-                  <CloudRain className="h-6 w-6 mx-auto mb-2 text-indigo-500" />
-                  <p className="text-sm text-muted-foreground">Curah Hujan</p>
-                  <p className="font-medium">
-                    {weatherData.weeklyWeather[0].rain} mm
-                  </p>
-                </div>
-                <div className="text-center p-4 bg-slate-50 rounded-lg">
-                  <Sprout className="h-6 w-6 mx-auto mb-2 text-green-500" />
-                  <p className="text-sm text-muted-foreground">Saran Tanam</p>
-                  <Badge className="bg-green-100 text-green-800">Baik</Badge>
-                </div>
-              </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
 
         <TabsContent value="monthly">
-          <div className="space-y-6">
-            <div className="flex justify-between items-center">
-              <div>
-                <h2 className="text-xl font-semibold">
-                  Prediksi Tanaman 6 Bulan Ke Depan
-                </h2>
-                <p className="text-muted-foreground">
-                  Rekomendasi tanaman berdasarkan prediksi iklim
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Calendar className="h-5 w-5 mr-2" />
+                Prediksi Tanaman Bulanan
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Rekomendasi tanaman berdasarkan prediksi iklim
+              </p>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-12">
+                <Sprout className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-50" />
+                <h3 className="text-lg font-semibold mb-2">Fitur Segera Hadir</h3>
+                <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+                  Rekomendasi tanaman bulanan berbasis AI sedang dalam pengembangan. 
+                  Saat ini Anda dapat menggunakan prediksi cuaca dari tab lainnya.
                 </p>
+                <div className="flex items-center justify-center space-x-4 text-sm">
+                  <Badge variant="outline" className="bg-blue-50">
+                    <Thermometer className="h-3 w-3 mr-1" />
+                    Prediksi AI/ML Tersedia
+                  </Badge>
+                  <Badge variant="outline" className="bg-green-50">
+                    <Cloud className="h-3 w-3 mr-1" />
+                    Data BMKG Real-time
+                  </Badge>
+                </div>
               </div>
-              <Button
-                onClick={downloadPlantingGuide}
-                className="flex items-center space-x-2"
-              >
-                <Download className="h-4 w-4" />
-                <span>Download Panduan</span>
-              </Button>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {aiRecommendations.map((month: any, index: number) => (
-                <Card key={index}>
-                  <CardHeader>
-                    <CardTitle className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <Calendar className="h-5 w-5 mr-2" />
-                        {month.month}
-                      </div>
-                      <Badge variant="outline">{month.season}</Badge>
-                    </CardTitle>
-                    <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-                      <div className="flex items-center">
-                        <Droplets className="h-4 w-4 mr-1" />
-                        {month.rainfall}mm
-                      </div>
-                      <div className="flex items-center">
-                        <Thermometer className="h-4 w-4 mr-1" />
-                        {month.temp}°C
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      {month.recommendations.map(
-                        (rec: any, recIndex: number) => (
-                          <div key={recIndex} className="p-3 border rounded-lg">
-                            <div className="flex items-center justify-between mb-2">
-                              <h4 className="font-medium">{rec.plant}</h4>
-                              <Badge
-                                className={getSuitabilityColor(rec.suitability)}
-                              >
-                                {getSuitabilityText(rec.suitability)}
-                              </Badge>
-                            </div>
-                            <p className="text-sm text-muted-foreground">
-                              {rec.reason}
-                            </p>
-                          </div>
-                        )
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="charts">
@@ -803,6 +986,70 @@ export function WeatherPrediction() {
                 </ResponsiveContainer>
               </CardContent>
             </Card>
+
+            {/* ML Prediction Comparison */}
+            {backendPredictions && backendPredictions.length > 0 && (
+              <Card className="lg:col-span-2">
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <Zap className="h-5 w-5 mr-2 text-yellow-500" />
+                    Perbandingan: Prakiraan BMKG vs Prediksi ML
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={350}>
+                    <LineChart
+                      data={(() => {
+                        // Combine BMKG and ML data
+                        const combined = weatherData.rainfallData.map((item: any, idx: number) => ({
+                          day: item.day,
+                          bmkg: item.temp,
+                          ml: backendPredictions[idx]?.predicted_temp || null,
+                        }));
+                        return combined;
+                      })()}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="day" />
+                      <YAxis />
+                      <Tooltip
+                        formatter={(value: any, name: string) => [
+                          `${value?.toFixed(1)}°C`,
+                          name === "bmkg" ? "BMKG" : "ML Prediction",
+                        ]}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="bmkg"
+                        stroke="#3b82f6"
+                        strokeWidth={2}
+                        name="BMKG"
+                        dot={{ fill: "#3b82f6", r: 4 }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="ml"
+                        stroke="#f59e0b"
+                        strokeWidth={2}
+                        strokeDasharray="5 5"
+                        name="ML"
+                        dot={{ fill: "#f59e0b", r: 4 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                  <div className="mt-4 flex items-center justify-center space-x-6 text-sm">
+                    <div className="flex items-center">
+                      <div className="w-4 h-0.5 bg-blue-500 mr-2"></div>
+                      <span>Prakiraan BMKG</span>
+                    </div>
+                    <div className="flex items-center">
+                      <div className="w-4 h-0.5 bg-orange-500 border-dashed mr-2"></div>
+                      <span>Prediksi ML</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </TabsContent>
 
