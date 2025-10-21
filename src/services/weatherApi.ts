@@ -36,7 +36,7 @@ export const fetchWeatherPredictions = async (
   days: number = 7
 ): Promise<WeatherPrediction[]> => {
   try {
-    const response = await fetch(`http://127.0.0.1:8000/weather/weather/predict?days=${days}`);
+    const response = await fetch(`http://127.0.0.1:8000/weather/predict?days=${days}`);
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
