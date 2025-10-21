@@ -4,33 +4,52 @@ from prophet import Prophet
 from sqlalchemy.orm import Session
 from datetime import datetime
 import logging
+import traceback
 
 from app.models.weather_model import WeatherData, WeatherPrediction
 
-# Endpoint BMKG Banjarnegara
+# Endpoint BMKG Banjarnegara (contoh)
 BMKG_ENDPOINT = "https://api.bmkg.go.id/publik/prakiraan-cuaca?adm4=31.71.03.1001"
+
 
 # ---- 1. Ambil data cuaca dari API BMKG ----
 def fetch_weather_data():
-    res = requests.get(BMKG_ENDPOINT)
-    res.raise_for_status()
-    data = res.json()
+    try:
+        res = requests.get(BMKG_ENDPOINT, timeout=15)
+        res.raise_for_status()
+        data = res.json()
+    except Exception as e:
+        logging.error("Gagal mengambil data dari BMKG: %s", traceback.format_exc())
+        raise RuntimeError(f"Gagal mengambil data BMKG: {e}")
 
     records = []
 
-    # BMKG -> struktur JSON mungkin nested di "data" / "data"["params"]
-    # kamu bisa ubah sesuai struktur sebenarnya
-    for area in data.get("data", []):
-        for ts in area.get("timesteps", []):
-            records.append({
-                "ds": ts.get("datetime"),
-                "temperature": ts.get("t", {}).get("value", None),
-                "humidity": ts.get("hu", {}).get("value", None),
-                "rainfall": ts.get("rr", {}).get("value", None)
-            })
+    try:
+        # Struktur API BMKG umumnya: data -> area -> parameter -> timerange
+        for area in data["data"]["area"]:
+            location = area.get("name", {}).get("value", "Unknown")
+            params = area.get("parameter", [])
+
+            # Ambil parameter suhu (id == "t")
+            for param in params:
+                if param.get("id") == "t":
+                    for ts in param.get("timerange", []):
+                        records.append({
+                            "ds": ts.get("datetime"),
+                            "temperature": float(ts.get("value", 0)),
+                            "humidity": None,
+                            "rainfall": None,
+                            "location": location
+                        })
+    except Exception as e:
+        logging.error("Gagal parsing data BMKG: %s", traceback.format_exc())
+        raise RuntimeError(f"Struktur JSON BMKG tidak sesuai: {e}")
 
     df = pd.DataFrame(records)
-    df["ds"] = pd.to_datetime(df["ds"])
+    if df.empty:
+        raise ValueError("Data BMKG kosong atau tidak terbaca.")
+
+    df["ds"] = pd.to_datetime(df["ds"], errors="coerce")
     df = df.dropna(subset=["ds", "temperature"])
     return df
 
@@ -39,7 +58,7 @@ def fetch_weather_data():
 def save_weather_data(db: Session, df: pd.DataFrame):
     for _, row in df.iterrows():
         weather = WeatherData(
-            station_name="BMKG Banjarnegara",
+            location_name=row.get("location", "BMKG Banjarnegara"),
             temperature=row["temperature"],
             humidity=row.get("humidity"),
             rainfall=row.get("rainfall"),
@@ -53,6 +72,8 @@ def save_weather_data(db: Session, df: pd.DataFrame):
 def predict_weather(db: Session, days_ahead: int = 3):
     # Ambil data historis dari DB
     query = db.query(WeatherData).order_by(WeatherData.date).all()
+
+    # Jika belum ada data, ambil dari BMKG dan simpan
     if not query:
         df = fetch_weather_data()
         if df.empty:
@@ -60,29 +81,35 @@ def predict_weather(db: Session, days_ahead: int = 3):
         save_weather_data(db, df)
         query = db.query(WeatherData).order_by(WeatherData.date).all()
 
+    # Konversi hasil query menjadi DataFrame untuk Prophet
     df = pd.DataFrame([{
         "ds": r.date,
         "y": r.temperature
-    } for r in query])
+    } for r in query if r.temperature is not None])
 
-    # Train model Prophet
+    if df.empty or df["y"].isna().all():
+        raise ValueError("Data historis kosong, tidak dapat membuat model prediksi.")
+
+    # Latih model Prophet
     model = Prophet(daily_seasonality=True, yearly_seasonality=True)
-    model.fit(df)
+    try:
+        model.fit(df)
+    except Exception as e:
+        logging.error("Gagal melatih model Prophet: %s", traceback.format_exc())
+        raise RuntimeError(f"Kesalahan saat melatih model: {e}")
 
-    # Prediksi
+    # Prediksi untuk beberapa hari ke depan
     future = model.make_future_dataframe(periods=days_ahead, freq="D")
     forecast = model.predict(future)
 
-    results = forecast[["ds", "yhat", "yhat_lower", "yhat_upper"]].tail(days_ahead)
-    # Validate forecast columns to avoid cryptic KeyError messages (e.g. 'ds')
     required_cols = {"ds", "yhat", "yhat_lower", "yhat_upper"}
-    present_cols = set(forecast.columns)
-    missing = required_cols - present_cols
+    missing = required_cols - set(forecast.columns)
     if missing:
-        logging.error("Forecast columns missing: %s", present_cols)
+        logging.error("Kolom hasil prediksi hilang: %s", missing)
         raise RuntimeError(f"Missing forecast columns: {missing}")
 
     results = forecast[["ds", "yhat", "yhat_lower", "yhat_upper"]].tail(days_ahead)
+
     predictions = []
     for _, row in results.iterrows():
         pred = WeatherPrediction(
@@ -94,6 +121,7 @@ def predict_weather(db: Session, days_ahead: int = 3):
         )
         db.add(pred)
         predictions.append(pred)
+
     db.commit()
 
     return predictions
