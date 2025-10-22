@@ -12,8 +12,9 @@ from app.models.weather_model import WeatherData, WeatherPrediction
 try:
     from prophet import Prophet
     PROPHET_AVAILABLE = True
+    logging.info("✅ Prophet ML library loaded successfully")
 except Exception as e:
-    logging.warning(f"Prophet import failed: {e}")
+    logging.info("ℹ️ Prophet not available. Will use Simple Moving Average fallback method.")
     PROPHET_AVAILABLE = False
 
 # Endpoint BMKG Banjarnegara (contoh)
@@ -137,7 +138,7 @@ def predict_weather(db: Session, days_ahead: int = 3):
     
     # If Prophet is not available, use simple method
     if not PROPHET_AVAILABLE:
-        logging.info("Prophet not available, using simple moving average")
+        logging.info("ℹ️ Using Simple Moving Average for weather predictions (Prophet not installed)")
         return predict_weather_simple(db, days_ahead)
     
     # Ambil data historis dari DB
@@ -208,7 +209,7 @@ def predict_weather(db: Session, days_ahead: int = 3):
         return predictions
         
     except Exception as e:
-        logging.warning("⚠️ Prophet not available (CmdStan not installed). Using Simple Moving Average instead.")
+        logging.info("ℹ️ Prophet ML model not available. Using Simple Moving Average fallback method.")
         # Only log full error in debug mode
         if logging.getLogger().level == logging.DEBUG:
             logging.debug("Prophet error details: %s", traceback.format_exc())
