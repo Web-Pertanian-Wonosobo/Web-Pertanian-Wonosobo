@@ -31,7 +31,7 @@ import {
   RotateCcw
 } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 
 interface AdminDashboardProps {
   onNavigate: (page: string) => void;
@@ -550,7 +550,7 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                       </div>
                       <div>
                         <h4 className="font-medium text-sm">{district}</h4>
-                        <Badge className={getRiskColor(data.riskLevel)} size="sm">
+                        <Badge className={getRiskColor(data.riskLevel)}>
                           {data.riskLevel}
                         </Badge>
                         <p className="text-xs text-gray-600 mt-1">Skor: {data.score}/100</p>

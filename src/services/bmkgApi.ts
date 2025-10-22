@@ -40,10 +40,10 @@ export interface ParsedBMKGData {
 
 /**
  * Fetch weather data directly from BMKG API
- * @param adm4Code - Kode wilayah administrative level 4 (contoh: 31.71.03.1001 untuk Wonosobo)
+ * @param adm4Code - Kode wilayah administrative level 4 (contoh: 33.07.09.1020 untuk Wonosobo)
  */
 export const fetchBMKGDirect = async (
-  adm4Code: string = "31.71.03.1001"
+  adm4Code: string = "33.07.09.1020"
 ): Promise<ParsedBMKGData | null> => {
   try {
     const response = await fetch(
@@ -78,24 +78,25 @@ export const fetchBMKGDirect = async (
 };
 
 /**
- * Kode wilayah (ADM4) untuk daerah di Wonosobo
+ * Kode wilayah (ADM4) untuk kecamatan di Kabupaten Wonosobo
+ * Format: 33.07.XX.XXXX (33=Jawa Tengah, 07=Wonosobo)
  */
 export const WONOSOBO_ADM4_CODES = {
-  WONOSOBO: "31.71.03.1001",
-  KERTEK: "31.71.01.1001",
-  GARUNG: "31.71.02.1001",
-  LEKSONO: "31.71.04.1001",
-  KALIWIRO: "31.71.05.1001",
-  SUKOHARJO: "31.71.06.1001",
-  SAPURAN: "31.71.07.1001",
-  KALIBAWANG: "31.71.08.1001",
-  KALIKAJAR: "31.71.09.1001",
-  KEPIL: "31.71.10.1001",
-  MOJOTENGAH: "31.71.11.1001",
-  SELOMERTO: "31.71.12.1001",
-  WADASLINTANG: "31.71.13.1001",
-  WATUMALANG: "31.71.14.1001",
-  KEJAJAR: "31.71.15.1001",
+  WADASLINTANG: "33.07.01.1007",
+  KEPIL: "33.07.02.1008",
+  SAPURAN: "33.07.03.1008",
+  KALIWIRO: "33.07.04.1015",
+  LEKSONO: "33.07.05.1006",
+  SELOMERTO: "33.07.06.1008",
+  KALIKAJAR: "33.07.07.1006",
+  KERTEK: "33.07.08.1008",
+  WONOSOBO: "33.07.09.1020",
+  WATUMALANG: "33.07.10.1010",
+  MOJOTENGAH: "33.07.11.1009",
+  GARUNG: "33.07.12.1005",
+  KEJAJAR: "33.07.13.1008",
+  SUKOHARJO: "33.07.14.2003",
+  KALIBAWANG: "33.07.15.2001",
 };
 
 /**

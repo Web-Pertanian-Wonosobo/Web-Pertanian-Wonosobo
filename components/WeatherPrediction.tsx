@@ -18,6 +18,9 @@ import {
   Droplets,
   Sprout,
   Calendar,
+  Wind,
+  Eye,
+  MapPin,
 } from "lucide-react";
 import {
   LineChart,
@@ -31,6 +34,14 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { fetchWeatherPredictions } from "../src/services/weatherApi";
+import {
+  fetchBMKGDirect,
+  groupForecastsByDay,
+  getAverageTemp,
+  getTotalRainfall,
+  getDominantWeather,
+  type ParsedBMKGData,
+} from "../src/services/bmkgApi";
 
 const fetchBMKGData = async (adm4Code: string) => {
   const url = `https://api.bmkg.go.id/publik/prakiraan-cuaca?adm4=${adm4Code}`;
@@ -116,6 +127,7 @@ export function WeatherPrediction() {
   const [backendPredictions, setBackendPredictions] = useState<any>(null);
   const [threeDayPredictions, setThreeDayPredictions] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [bmkgDetailData, setBmkgDetailData] = useState<ParsedBMKGData | null>(null);
 
   useEffect(() => {
     const loadData = async () => {
@@ -123,6 +135,10 @@ export function WeatherPrediction() {
       
       // Fetch BMKG data (real-time forecast) - sebagai fallback
       const data = await fetchBMKGData(selectedLocation);
+      
+      // Fetch BMKG detail data untuk tab prakiraan
+      const bmkgDetail = await fetchBMKGDirect(selectedLocation);
+      setBmkgDetailData(bmkgDetail);
 
       if (data) {
         const { forecast } = data;
@@ -547,7 +563,7 @@ export function WeatherPrediction() {
 
       <Tabs defaultValue="weekly" className="space-y-6">
         <TabsList>
-          <TabsTrigger value="weekly">Prakiraan 3 Harian</TabsTrigger>
+          <TabsTrigger value="weekly">Prakiraan Cuaca BMKG</TabsTrigger>
           <TabsTrigger value="ml-prediction">Prediksi AI/ML</TabsTrigger>
           <TabsTrigger value="monthly">Prediksi Bulanan</TabsTrigger>
           <TabsTrigger value="charts">Grafik Detail</TabsTrigger>
@@ -555,18 +571,313 @@ export function WeatherPrediction() {
         </TabsList>
 
         <TabsContent value="weekly">
-          {/* Tampilan menggunakan prediksi 3 hari dari backend API */}
-          <div className="mb-4 flex items-center justify-between">
-            <Badge variant="outline" className="bg-blue-50 text-blue-700">
-              <Zap className="h-3 w-3 mr-1" />
-              Prediksi 3 Hari dari Backend ML
-            </Badge>
-            {threeDayPredictions && threeDayPredictions.length > 0 && (
-              <span className="text-sm text-muted-foreground">
-                Model: {threeDayPredictions[0]?.source}
-              </span>
+          <div className="space-y-6">
+            {/* Info Lokasi BMKG */}
+            {bmkgDetailData && (
+              <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <MapPin className="h-5 w-5 text-blue-600" />
+                        <h3 className="font-semibold text-lg">
+                          {bmkgDetailData.location.desa}, {bmkgDetailData.location.kecamatan}
+                        </h3>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {bmkgDetailData.location.kotkab}, {bmkgDetailData.location.provinsi}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        📍 Koordinat: {bmkgDetailData.location.lat}, {bmkgDetailData.location.lon}
+                      </p>
+                    </div>
+                    <Badge variant="outline" className="bg-blue-100 text-blue-800">
+                      <Cloud className="h-3 w-3 mr-1" />
+                      Data BMKG
+                    </Badge>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Prakiraan 7 Hari dari BMKG */}
+            {bmkgDetailData && bmkgDetailData.forecasts.length > 0 ? (
+              <>
+                <div>
+                  <h3 className="text-lg font-semibold mb-4">Prakiraan 7 Hari</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-4">
+                    {(() => {
+                      const groupedForecasts = groupForecastsByDay(bmkgDetailData.forecasts);
+                      const days = Object.keys(groupedForecasts).slice(0, 7);
+                      const cards = [];
+                      
+                      // Render data yang tersedia dari BMKG
+                      days.forEach((day, index) => {
+                        const dayForecasts = groupedForecasts[day];
+                        const avgTemp = getAverageTemp(dayForecasts);
+                        const totalRain = getTotalRainfall(dayForecasts);
+                        const dominantWeather = getDominantWeather(dayForecasts);
+                        const firstForecast = dayForecasts[0];
+
+                        cards.push(
+                          <Card key={index} className="hover:shadow-lg transition-shadow">
+                            <CardContent className="p-4">
+                              <div className="space-y-3">
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <h3 className="font-semibold">{day}</h3>
+                                    <p className="text-xs text-muted-foreground">
+                                      Hari ke-{index + 1}
+                                    </p>
+                                  </div>
+                                  <Badge variant="outline">{dayForecasts.length}x</Badge>
+                                </div>
+
+                                {firstForecast.image && (
+                                  <div className="flex justify-center">
+                                    <img
+                                      src={firstForecast.image}
+                                      alt={dominantWeather}
+                                      className="h-16 w-16"
+                                      onError={(e) => {
+                                        e.currentTarget.style.display = "none";
+                                      }}
+                                    />
+                                  </div>
+                                )}
+
+                                <div className="text-center">
+                                  <p className="text-sm font-medium">{dominantWeather}</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {firstForecast.weather_desc}
+                                  </p>
+                                </div>
+
+                                <div className="text-center">
+                                  <div className="flex items-center justify-center gap-2">
+                                    <Thermometer className="h-5 w-5 text-orange-500" />
+                                    <span className="text-2xl font-bold">{avgTemp}°C</span>
+                                  </div>
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    Rata-rata harian
+                                  </p>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-2 pt-3 border-t">
+                                  <div className="text-center">
+                                    <div className="flex items-center justify-center gap-1">
+                                      <Droplets className="h-4 w-4 text-blue-500" />
+                                      <span className="text-sm font-medium">
+                                        {totalRain.toFixed(1)}mm
+                                      </span>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground">Hujan</p>
+                                  </div>
+                                  <div className="text-center">
+                                    <div className="flex items-center justify-center gap-1">
+                                      <Wind className="h-4 w-4 text-slate-500" />
+                                      <span className="text-sm font-medium">
+                                        {Math.round(
+                                          dayForecasts.reduce((acc, f) => acc + f.ws, 0) /
+                                            dayForecasts.length
+                                        )}
+                                        km/j
+                                      </span>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground">Angin</p>
+                                  </div>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      });
+
+                      // Tambahkan placeholder card untuk hari yang tidak tersedia (hingga total 7 card)
+                      const remainingDays = 7 - days.length;
+                      for (let i = 0; i < remainingDays; i++) {
+                        const dayIndex = days.length + i;
+                        const futureDate = new Date();
+                        futureDate.setDate(futureDate.getDate() + dayIndex);
+                        const futureDayName = futureDate.toLocaleDateString("id-ID", { weekday: "long" });
+                        
+                        cards.push(
+                          <Card key={`placeholder-${i}`} className="bg-slate-50 border-dashed opacity-60">
+                            <CardContent className="p-4">
+                              <div className="space-y-3">
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <h3 className="font-semibold text-muted-foreground">{futureDayName}</h3>
+                                    <p className="text-xs text-muted-foreground">
+                                      Hari ke-{dayIndex + 1}
+                                    </p>
+                                  </div>
+                                  <Badge variant="outline" className="bg-slate-200">N/A</Badge>
+                                </div>
+
+                                <div className="flex justify-center">
+                                  <Cloud className="h-16 w-16 text-slate-300" />
+                                </div>
+
+                                <div className="text-center">
+                                  <p className="text-sm font-medium text-muted-foreground">Data Tidak Tersedia</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    Belum ada prakiraan
+                                  </p>
+                                </div>
+
+                                <div className="text-center">
+                                  <div className="flex items-center justify-center gap-2">
+                                    <Thermometer className="h-5 w-5 text-slate-300" />
+                                    <span className="text-2xl font-bold text-slate-300">--°C</span>
+                                  </div>
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    Tidak tersedia
+                                  </p>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-2 pt-3 border-t border-dashed">
+                                  <div className="text-center">
+                                    <div className="flex items-center justify-center gap-1">
+                                      <Droplets className="h-4 w-4 text-slate-300" />
+                                      <span className="text-sm font-medium text-slate-400">--mm</span>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground">Hujan</p>
+                                  </div>
+                                  <div className="text-center">
+                                    <div className="flex items-center justify-center gap-1">
+                                      <Wind className="h-4 w-4 text-slate-300" />
+                                      <span className="text-sm font-medium text-slate-400">--km/j</span>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground">Angin</p>
+                                  </div>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      }
+
+                      return cards;
+                    })()}
+                  </div>
+                </div>
+
+                {/* Detail Per Jam untuk Hari Pertama */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Calendar className="h-5 w-5" />
+                      Detail Prakiraan Per Jam - Hari Pertama
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      {(() => {
+                        const groupedForecasts = groupForecastsByDay(bmkgDetailData.forecasts);
+                        const days = Object.keys(groupedForecasts);
+                        if (days.length === 0) return null;
+                        
+                        return groupedForecasts[days[0]].map((forecast, index) => (
+                          <div
+                            key={index}
+                            className="flex flex-col md:flex-row md:items-center md:justify-between p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors gap-3"
+                          >
+                            <div className="md:w-32">
+                              <p className="font-medium text-sm">
+                                {new Date(forecast.datetime).toLocaleTimeString("id-ID", {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {forecast.local_datetime.split(" ")[1]}
+                              </p>
+                            </div>
+
+                            <div className="flex items-center gap-2 flex-1">
+                              {forecast.image && (
+                                <img
+                                  src={forecast.image}
+                                  alt={forecast.weather}
+                                  className="h-8 w-8"
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = "none";
+                                  }}
+                                />
+                              )}
+                              <span className="text-sm font-medium">{forecast.weather_desc}</span>
+                            </div>
+
+                            <div className="grid grid-cols-2 md:flex md:gap-4 gap-2">
+                              <div className="flex items-center gap-1">
+                                <Thermometer className="h-4 w-4 text-orange-500" />
+                                <span className="text-sm font-medium">{forecast.t}°C</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Droplets className="h-4 w-4 text-blue-500" />
+                                <span className="text-sm">{forecast.hu}%</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Cloud className="h-4 w-4 text-indigo-500" />
+                                <span className="text-sm">{forecast.tp}mm</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Wind className="h-4 w-4 text-slate-500" />
+                                <span className="text-sm">{forecast.ws}km/j</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Eye className="h-4 w-4 text-gray-500" />
+                                <span className="text-sm">{forecast.vs_text}</span>
+                              </div>
+                            </div>
+                          </div>
+                        ));
+                      })()}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Attribution BMKG */}
+                <div className="text-center text-sm text-muted-foreground p-4 bg-slate-50 rounded-lg">
+                  <p>
+                    📊 Data cuaca bersumber dari{" "}
+                    <strong>BMKG (Badan Meteorologi, Klimatologi, dan Geofisika)</strong>
+                  </p>
+                  <p className="text-xs mt-1">
+                    <a
+                      href="https://data.bmkg.go.id/prakiraan-cuaca"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline"
+                    >
+                      data.bmkg.go.id/prakiraan-cuaca
+                    </a>
+                  </p>
+                </div>
+              </>
+            ) : (
+              <Card>
+                <CardContent className="p-8 text-center">
+                  <Cloud className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
+                  <p className="text-muted-foreground">Memuat data prakiraan BMKG...</p>
+                </CardContent>
+              </Card>
             )}
           </div>
+
+          {/* Fallback: Tampilan prediksi 3 hari dari backend ML jika BMKG tidak tersedia */}
+          {!bmkgDetailData && threeDayPredictions && threeDayPredictions.length > 0 && (
+            <>
+              <div className="mb-4 flex items-center justify-between">
+                <Badge variant="outline" className="bg-yellow-50 text-yellow-700">
+                  <Zap className="h-3 w-3 mr-1" />
+                  Fallback: Prediksi dari Backend ML
+                </Badge>
+                <span className="text-sm text-muted-foreground">
+                  Model: {threeDayPredictions[0]?.source}
+                </span>
+              </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
             {threeDayPredictions && threeDayPredictions.length > 0 ? (
@@ -616,7 +927,7 @@ export function WeatherPrediction() {
                     Menggunakan data BMKG (Backend tidak tersedia)
                   </Badge>
                 </div>
-                {weatherData.weeklyWeather.slice(0, 3).map((day: any, index: number) => {
+                {weatherData.weeklyWeather.slice(0, 7).map((day: any, index: number) => {
                   const Icon = getIconForWeather(day.weather);
                   return (
                     <Card key={index} className="text-center">
@@ -735,6 +1046,8 @@ export function WeatherPrediction() {
               )}
             </CardContent>
           </Card>
+            </>
+          )}
         </TabsContent>
 
         <TabsContent value="ml-prediction">
