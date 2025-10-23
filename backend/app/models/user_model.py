@@ -1,11 +1,8 @@
-# app/models/user_model.py
 from sqlalchemy import Column, Integer, String, Text, TIMESTAMP, Boolean, Enum
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.db import Base
 import enum
-
-
 
 class UserRole(str, enum.Enum):
     PUBLIC = "public"
