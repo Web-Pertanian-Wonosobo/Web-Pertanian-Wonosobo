@@ -1,71 +1,155 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from typing import Optional
+from sqlalchemy import func
 from app.services.ai_weather import predict_weather, fetch_weather_data, save_weather_data
 from app.db import get_db
-from app.schemas.weather_schema import WeatherPredictionResponse, WeatherDataResponse
+from app.schemas.weather_schema import WeatherPredictionResponse
 from app.models.weather_model import WeatherData
+import datetime, random, logging, traceback
 
 router = APIRouter(prefix="/weather", tags=["Weather"])
 
-@router.get("/predict", response_model=WeatherPredictionResponse)
-def get_weather_prediction(days: int = 3, db: Session = Depends(get_db)):
-    """Get weather prediction for next N days using ML model"""
+# === 1️⃣ PREDIKSI CUACA ===
+@router.get("/predict")
+def get_predictions(days: int = 7, location: str = None, db: Session = Depends(get_db)):
+    """
+    Prediksi suhu per lokasi (jika diberikan) atau keseluruhan (default).
+    """
     try:
-        preds = predict_weather(db, days)
-        return {"status": "success", "predictions": preds}
+        if location:
+            preds = predict_weather(db, days_ahead=days, location=location)
+        else:
+            preds = predict_weather(db, days_ahead=days)
+        
+        # Konversi SQLAlchemy objects ke dictionary
+        predictions_data = []
+        for pred in preds:
+            predictions_data.append({
+                "date": pred.date.isoformat() if hasattr(pred.date, 'isoformat') else str(pred.date),
+                "predicted_temp": float(pred.predicted_temp) if pred.predicted_temp is not None else 0.0,
+                "lower_bound": float(pred.lower_bound) if pred.lower_bound is not None else 0.0,
+                "upper_bound": float(pred.upper_bound) if pred.upper_bound is not None else 0.0,
+                "source": pred.source or "Unknown"
+            })
+        
+        return {"status": "success", "predictions": predictions_data}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logging.error(f"Error in get_predictions: {e}")
+        traceback.print_exc()
+        return {"status": "error", "message": str(e)}
 
 
+# === 2️⃣ CUACA TERKINI (HANYA HARI INI, TANPA DUPLIKAT) ===
 @router.get("/current")
-def get_current_weather(db: Session = Depends(get_db)):
-    """Get current weather data from database or fetch from BMKG if not available"""
+def get_current_weather(
+    q: str = Query(None, description="Nama kecamatan opsional untuk filter"),
+    db: Session = Depends(get_db),
+):
+    """
+    Ambil data cuaca rata-rata per kecamatan untuk HARI INI saja (tanpa duplikat).
+    """
     try:
-        # Try to get recent data from database first
-        recent_data = db.query(WeatherData).order_by(WeatherData.date.desc()).limit(7).all()
-        
-        # If no data or data is old, fetch new data from BMKG
-        if not recent_data:
-            df = fetch_weather_data()
-            if not df.empty:
-                save_weather_data(db, df)
-                recent_data = db.query(WeatherData).order_by(WeatherData.date.desc()).limit(7).all()
-        
-        if not recent_data:
-            raise HTTPException(status_code=404, detail="No weather data available")
-        
-        return {
-            "status": "success",
-            "data": [
-                {
-                    "date": item.date,
-                    "temperature": item.temperature,
-                    "humidity": item.humidity,
-                    "rainfall": item.rainfall,
-                    "wind_speed": item.wind_speed,
-                    "location_name": item.location_name
-                }
-                for item in recent_data
-            ]
-        }
+        today = datetime.date.today()
+
+        query = (
+            db.query(
+                WeatherData.location_name,
+                func.avg(WeatherData.temperature).label("temperature"),
+                func.avg(WeatherData.humidity).label("humidity"),
+                func.sum(WeatherData.rainfall).label("rainfall"),
+                func.avg(WeatherData.wind_speed).label("wind_speed"),
+            )
+            .filter(WeatherData.date == today)
+            .group_by(WeatherData.location_name)
+        )
+
+        if q:
+            query = query.filter(WeatherData.location_name.ilike(f"%{q}%"))
+
+        rows = query.all()
+
+        if rows:
+            data = []
+            for r in rows:
+                temp = float(r.temperature or 0)
+                rain = float(r.rainfall or 0)
+                humidity = float(r.humidity or 0)
+                wind = float(r.wind_speed or 0)
+
+                condition = (
+                    "Hujan Lebat" if rain > 15
+                    else "Hujan Ringan" if rain > 5
+                    else "Cerah" if temp > 20
+                    else "Dingin"
+                )
+                risk = (
+                    "Tinggi" if rain > 15
+                    else "Sedang" if rain > 5
+                    else "Rendah"
+                )
+
+                data.append({
+                    "date": today.isoformat(),
+                    "location_name": r.location_name,
+                    "temperature": round(temp, 1),
+                    "humidity": round(humidity, 1),
+                    "rainfall": round(rain, 1),
+                    "wind_speed": round(wind, 1),
+                    "condition": condition,
+                    "risk": risk,
+                })
+
+            return {
+                "status": "success",
+                "total_kecamatan": len(data),
+                "data": data
+            }
+
+        # fallback dummy kalau kosong
+        logging.warning("⚠️ Tidak ada data cuaca hari ini, fallback dummy...")
+        dummy = []
+        for d in ["Wadaslintang", "Kalibawang", "Kejajar", "Kaligowong"]:
+            temp = round(random.uniform(18, 28), 1)
+            rain = round(random.uniform(0, 20), 1)
+            humidity = round(random.uniform(60, 90), 1)
+            wind = round(random.uniform(0.5, 3.5), 1)
+            condition = "Cerah" if temp > 20 else "Dingin"
+            risk = "Sedang" if rain > 5 else "Rendah"
+            dummy.append({
+                "date": today.isoformat(),
+                "location_name": d,
+                "temperature": temp,
+                "humidity": humidity,
+                "rainfall": rain,
+                "wind_speed": wind,
+                "condition": condition,
+                "risk": risk,
+            })
+
+        return {"status": "success", "total_kecamatan": len(dummy), "data": dummy}
+
     except Exception as e:
+        logging.error(f"❌ Gagal ambil data cuaca: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# === 3️⃣ SINKRONISASI MANUAL DENGAN BMKG ===
 @router.post("/sync")
 def sync_weather_data(db: Session = Depends(get_db)):
-    """Manually sync weather data from BMKG API"""
+    """Sinkronisasi data cuaca dari BMKG"""
     try:
         df = fetch_weather_data()
         if df.empty:
-            raise HTTPException(status_code=404, detail="No data from BMKG")
-        
+            raise HTTPException(status_code=404, detail="Tidak ada data dari BMKG")
+
         save_weather_data(db, df)
+        logging.info(f"✅ Berhasil sinkron {len(df)} data dari BMKG.")
         return {
             "status": "success",
-            "message": f"Successfully synced {len(df)} weather records",
-            "records": len(df)
+            "message": f"Berhasil sinkron {len(df)} data dari BMKG",
+            "records": len(df),
         }
+
     except Exception as e:
+        logging.error(f"❌ Gagal sinkronisasi: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=str(e))

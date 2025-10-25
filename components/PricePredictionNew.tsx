@@ -22,16 +22,13 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import {
-  fetchRealtimeMarketPrices,
-  formatPrice,
-  calculatePriceTrend,
-  groupPricesByCommodity,
-  type MarketPrice,
-} from "../src/services/marketApi";
+  fetchAllKomoditas,
+  type Komoditas,
+} from "../src/services/komoditasApi";
 
 export function PricePrediction() {
   const [selectedCommodity, setSelectedCommodity] = useState("");
-  const [realtimePrices, setRealtimePrices] = useState<MarketPrice[]>([]);
+  const [komoditasData, setKomoditasData] = useState<Komoditas[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState<string>("");
   const [simulationData, setSimulationData] = useState({
@@ -42,29 +39,29 @@ export function PricePrediction() {
     bestSellDate: "",
   });
 
-  // Load real-time prices from API
+  // Load komoditas data from API
   const loadPrices = async () => {
     setLoading(true);
     try {
-      const result = await fetchRealtimeMarketPrices();
-      if (result.success && result.data && result.data.length > 0) {
-        setRealtimePrices(result.data);
+      const result = await fetchAllKomoditas();
+      if (result && result.length > 0) {
+        setKomoditasData(result);
         setLastUpdate(new Date().toLocaleString("id-ID"));
         
         // Set default commodity jika belum ada yang dipilih
-        if (!selectedCommodity && result.data.length > 0) {
-          setSelectedCommodity(result.data[0].commodity_name);
+        if (!selectedCommodity && result.length > 0) {
+          setSelectedCommodity(result[0].nama || "");
         }
         
-        toast.success(`${result.total} data harga berhasil dimuat dari API`);
+        toast.success(`${result.length} data komoditas berhasil dimuat`);
       } else {
-        setRealtimePrices([]);
-        toast.info("Belum ada data dari API");
+        setKomoditasData([]);
+        toast.info("Belum ada data komoditas");
       }
     } catch (error) {
-      console.error("Error loading prices:", error);
-      toast.error("Gagal memuat data dari API");
-      setRealtimePrices([]);
+      console.error("Error loading komoditas:", error);
+      toast.error("Gagal memuat data komoditas");
+      setKomoditasData([]);
     } finally {
       setLoading(false);
     }
@@ -77,44 +74,45 @@ export function PricePrediction() {
     return () => clearInterval(interval);
   }, []);
 
-  // Get grouped prices by commodity
-  const groupedPrices = groupPricesByCommodity(realtimePrices);
-  const commodityNames = Array.from(groupedPrices.keys());
+  // Get commodity names
+  const commodityNames = komoditasData.map(k => k.nama).filter((n): n is string => Boolean(n));
 
   // Get current commodity data
   const getCurrentCommodityData = () => {
-    if (!selectedCommodity || realtimePrices.length === 0) return null;
+    if (!selectedCommodity || komoditasData.length === 0) return null;
     
-    const commodityPrices = groupedPrices.get(selectedCommodity) || [];
-    if (commodityPrices.length === 0) return null;
-    
-    const trend = calculatePriceTrend(commodityPrices);
-    const latestPrice = commodityPrices[0];
+    const commodity = komoditasData.find(k => k.nama === selectedCommodity);
+    if (!commodity) return null;
     
     return {
-      name: selectedCommodity,
-      currentPrice: latestPrice.price,
-      unit: latestPrice.unit,
-      trend: trend.trend,
-      change: `${trend.changePercent > 0 ? "+" : ""}${trend.changePercent.toFixed(1)}%`,
-      location: latestPrice.market_location,
-      category: latestPrice.category,
-      date: latestPrice.date,
+      name: commodity.nama || "Tidak diketahui",
+      currentPrice: commodity.harga || 0,
+      unit: commodity.satuan || "kg",
+      trend: "stable" as const,
+      change: commodity.perubahan || "0%",
+      category: commodity.kategori || "Umum",
+      date: commodity.tanggal || new Date().toISOString(),
     };
   };
 
   const currentCommodityData = getCurrentCommodityData();
 
-  // Get market info from real-time data
-  const marketInfo = realtimePrices.slice(0, 10).map((price) => ({
-    market: price.market_location,
-    commodity: price.commodity_name,
-    price: formatPrice(price.price),
-    updated: new Date(price.date).toLocaleString("id-ID", {
+  // Format price helper
+  const formatPrice = (price: number) => {
+    if (!price || price === 0) return "Belum ada data";
+    return `Rp ${price.toLocaleString("id-ID")}`;
+  };
+
+  // Get market info from komoditas data
+  const marketInfo = komoditasData.slice(0, 10).map((item) => ({
+    market: "Wonosobo",
+    commodity: item.nama || "Tidak diketahui",
+    price: formatPrice(item.harga || 0),
+    updated: item.tanggal ? new Date(item.tanggal).toLocaleDateString("id-ID", {
       day: "numeric",
       month: "short",
       year: "numeric",
-    }),
+    }) : "-",
   }));
 
   const calculateSimulation = () => {
@@ -138,7 +136,7 @@ export function PricePrediction() {
   };
 
   // Empty state jika tidak ada data
-  if (!loading && realtimePrices.length === 0) {
+  if (!loading && komoditasData.length === 0) {
     return (
       <div className="p-6 max-w-8xl mx-auto">
         <div className="mb-6">
@@ -168,13 +166,13 @@ export function PricePrediction() {
   }
 
   // Loading state
-  if (loading && realtimePrices.length === 0) {
+  if (loading && komoditasData.length === 0) {
     return (
       <div className="p-6 max-w-8xl mx-auto">
         <div className="mb-6">
           <h1 className="text-3xl font-bold mb-2">Prediksi Harga Komoditas</h1>
           <p className="text-muted-foreground">
-            Memuat data dari API...
+            Memuat data komoditas...
           </p>
         </div>
         <Card>
@@ -238,21 +236,7 @@ export function PricePrediction() {
                       <span className="text-sm text-muted-foreground">
                         per {currentCommodityData.unit}
                       </span>
-                      <Badge
-                        variant={
-                          currentCommodityData.trend === "up"
-                            ? "default"
-                            : currentCommodityData.trend === "down"
-                            ? "destructive"
-                            : "secondary"
-                        }
-                      >
-                        {currentCommodityData.trend === "up" && (
-                          <TrendingUp className="h-3 w-3 mr-1" />
-                        )}
-                        {currentCommodityData.trend === "down" && (
-                          <TrendingDown className="h-3 w-3 mr-1" />
-                        )}
+                      <Badge variant="secondary">
                         {currentCommodityData.change}
                       </Badge>
                     </div>
@@ -413,7 +397,7 @@ export function PricePrediction() {
                 <div className="p-4 bg-slate-50 rounded-lg">
                   <p className="text-sm text-muted-foreground">Lokasi Pasar</p>
                   <p className="text-lg font-medium">
-                    {currentCommodityData.location}
+                    Wonosobo
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
                     Kategori: {currentCommodityData.category}
@@ -422,16 +406,10 @@ export function PricePrediction() {
                 <div className="p-4 bg-slate-50 rounded-lg">
                   <p className="text-sm text-muted-foreground">Tren Harga</p>
                   <p className="text-lg font-medium flex items-center">
-                    {currentCommodityData.trend === "up" && (
-                      <TrendingUp className="h-5 w-5 mr-1 text-green-600" />
-                    )}
-                    {currentCommodityData.trend === "down" && (
-                      <TrendingDown className="h-5 w-5 mr-1 text-red-600" />
-                    )}
                     {currentCommodityData.change}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {currentCommodityData.trend === "up" ? "Naik" : currentCommodityData.trend === "down" ? "Turun" : "Stabil"}
+                    Perubahan harga
                   </p>
                 </div>
               </CardContent>
@@ -442,7 +420,7 @@ export function PricePrediction() {
         <TabsContent value="markets">
           <Card>
             <CardHeader>
-              <CardTitle>Harga Pasar Real-time ({realtimePrices.length} Data)</CardTitle>
+              <CardTitle>Harga Pasar Real-time ({komoditasData.length} Data)</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">

@@ -1,47 +1,140 @@
-import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Button } from './ui/button';
-import { 
-  CloudRain, 
-  TrendingUp, 
-  Mountain, 
+import { useEffect, useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { Button } from "./ui/button";
+import {
+  CloudRain,
+  TrendingUp,
+  Mountain,
   MapPin,
   ArrowRight,
-  AlertTriangle,
   Thermometer,
   Wind,
-  Eye
-} from 'lucide-react';
+  Eye,
+} from "lucide-react";
+import { fetchAllKomoditas, type Komoditas } from "../src/services/komoditasApi";
+
+interface WeatherDistrict {
+  name: string;
+  temperature: number;
+  condition: string;
+  risk: string;
+}
+
+interface Commodity {
+  name: string;
+  price?: number;
+  change?: string;
+}
 
 interface DashboardProps {
   onNavigate: (page: string) => void;
 }
 
 export function Dashboard({ onNavigate }: DashboardProps) {
-  // Data cuaca per kecamatan (sample data)
-  const weatherByDistrict = [
-    { name: 'Wonosobo Kota', temp: '24°C', condition: 'Berawan', risk: 'Rendah' },
-    { name: 'Kertek', temp: '22°C', condition: 'Hujan Ringan', risk: 'Sedang' },
-    { name: 'Garung', temp: '23°C', condition: 'Cerah', risk: 'Rendah' },
-    { name: 'Leksono', temp: '20°C', condition: 'Dingin', risk: 'Tinggi' },
-    { name: 'Kalibawang', temp: '18°C', condition: 'Berkabut', risk: 'Tinggi' }
-  ];
+  const [weatherData, setWeatherData] = useState<WeatherDistrict[]>([]);
+  const [commodityData, setCommodityData] = useState<Commodity[]>([]);
+  const [loadingWeather, setLoadingWeather] = useState(true);
+  const [loadingCommodity, setLoadingCommodity] = useState(true);
+
+  // === Fetch Data Cuaca dari Backend ===
+  useEffect(() => {
+    const fetchWeather = async () => {
+      setLoadingWeather(true);
+      try {
+        const response = await fetch("http://127.0.0.1:8000/weather/current");
+        if (!response.ok) throw new Error("Gagal mengambil data cuaca");
+        const data = await response.json();
+
+        console.log("Data cuaca dari backend:", data);
+
+        const normalized = (data.data || []).map((item: any) => ({
+          name: item.location_name || "Tidak diketahui",
+          temperature: Number(item.temperature || 0),
+          condition: item.condition || "-",
+          risk: item.risk || "Rendah",
+        }));
+
+        setWeatherData(normalized);
+      } catch (error) {
+        console.error("Gagal memuat data cuaca:", error);
+        setWeatherData([]);
+      } finally {
+        setLoadingWeather(false);
+      }
+    };
+
+    // Panggil pertama kali
+    fetchWeather();
+
+    // Auto refresh tiap 5 menit
+    const interval = setInterval(fetchWeather, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // === Fetch Data Komoditas dari API Disdagkopukm ===
+  useEffect(() => {
+    const fetchCommodities = async () => {
+      setLoadingCommodity(true);
+      try {
+        const data = await fetchAllKomoditas();
+        console.log("Data komoditas lengkap dari semua API:", data);
+
+        // Konversi ke format yang digunakan Dashboard
+        const normalized = data.slice(0, 6).map((item: Komoditas) => ({
+          name: item.nama || "Tidak diketahui",
+          price: item.harga || 0,
+          change: item.perubahan || "0%",
+        }));
+
+        setCommodityData(normalized);
+      } catch (error) {
+        console.error("Gagal memuat data komoditas:", error);
+        setCommodityData([]);
+      } finally {
+        setLoadingCommodity(false);
+      }
+    };
+
+    fetchCommodities();
+    
+    // Auto refresh tiap 10 menit
+    const interval = setInterval(fetchCommodities, 10 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const getRiskColor = (risk: string) => {
     switch (risk) {
-      case 'Tinggi': return 'text-red-600 bg-red-100';
-      case 'Sedang': return 'text-yellow-600 bg-yellow-100';
-      default: return 'text-green-600 bg-green-100';
+      case "Tinggi":
+        return "text-red-600 bg-red-100";
+      case "Sedang":
+        return "text-yellow-600 bg-yellow-100";
+      default:
+        return "text-green-600 bg-green-100";
     }
   };
 
+  const avgTemp =
+    weatherData.length > 0
+      ? (
+          weatherData.reduce((sum, d) => sum + (d.temperature || 0), 0) /
+          weatherData.length
+        ).toFixed(1)
+      : "-";
+
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-8 max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Dashboard Monitoring</h1>
-          <p className="text-gray-600 mt-1">Sistem Monitoring Pertanian Kabupaten Wonosobo</p>
+          <h1 className="text-3xl font-bold text-gray-900">
+            Dashboard Monitoring
+          </h1>
+          <p className="text-gray-600 mt-1">
+            Sistem Monitoring Pertanian Kabupaten Wonosobo
+          </p>
+          <p className="text-gray-500 text-sm mt-1">
+            🔄 Data diperbarui otomatis setiap 5 menit
+          </p>
         </div>
         <div className="flex items-center space-x-2 text-sm text-gray-600">
           <MapPin className="w-4 h-4" />
@@ -49,45 +142,53 @@ export function Dashboard({ onNavigate }: DashboardProps) {
         </div>
       </div>
 
-      {/* Quick Stats */}
+      {/* Statistik Utama */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card>
+        <Card className="border-blue-100 shadow-sm hover:shadow-md transition-shadow">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Kecamatan</p>
-                <p className="text-2xl font-bold text-gray-900">15</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {loadingWeather ? "..." : weatherData.length}
+                </p>
               </div>
               <MapPin className="w-8 h-8 text-blue-600" />
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-orange-100 shadow-sm hover:shadow-md transition-shadow">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Suhu Rata-rata</p>
-                <p className="text-2xl font-bold text-gray-900">22°C</p>
+                <p className="text-sm font-medium text-gray-600">
+                  Suhu Rata-rata
+                </p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {loadingWeather ? "..." : `${avgTemp}°C`}
+                </p>
               </div>
               <Thermometer className="w-8 h-8 text-orange-600" />
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-green-100 shadow-sm hover:shadow-md transition-shadow">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Komoditas</p>
-                <p className="text-2xl font-bold text-gray-900">18</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {loadingCommodity ? "..." : commodityData.length || 0}
+                </p>
               </div>
               <TrendingUp className="w-8 h-8 text-green-600" />
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-purple-100 shadow-sm hover:shadow-md transition-shadow">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -100,124 +201,97 @@ export function Dashboard({ onNavigate }: DashboardProps) {
         </Card>
       </div>
 
-      {/* Main Feature Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => onNavigate('weather')}>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                <CloudRain className="w-5 h-5 text-blue-600" />
-              </div>
-              <span>Prediksi Cuaca</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-gray-600 mb-4">
-              Pantau kondisi cuaca real-time dan prediksi untuk setiap kecamatan dan desa di Wonosobo
-            </p>
-            <Button variant="outline" className="w-full group">
-              <span>Lihat Detail</span>
-              <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => onNavigate('price-prediction')}>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                <TrendingUp className="w-5 h-5 text-green-600" />
-              </div>
-              <span>Prediksi Harga</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-gray-600 mb-4">
-              Analisis tren harga komoditas pertanian untuk membantu keputusan penjualan
-            </p>
-            <Button variant="outline" className="w-full group">
-              <span>Lihat Detail</span>
-              <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => onNavigate('slope-analysis')}>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
-                <Mountain className="w-5 h-5 text-red-600" />
-              </div>
-              <span>Analisis Lereng</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-gray-600 mb-4">
-              Monitor risiko longsor dan stabilitas lereng untuk keamanan aktivitas pertanian
-            </p>
-            <Button variant="outline" className="w-full group">
-              <span>Lihat Detail</span>
-              <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Weather Overview per District */}
-      <Card>
+      {/* Ringkasan Cuaca */}
+      <Card className="border-blue-100">
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <span>Ringkasan Cuaca per Kecamatan</span>
-            <Button variant="outline" size="sm" onClick={() => onNavigate('weather')}>
+            <Button variant="outline" size="sm" onClick={() => onNavigate("weather")}>
               <Eye className="w-4 h-4 mr-2" />
               Lihat Semua
             </Button>
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {weatherByDistrict.map((district, index) => (
-              <div key={index} className="p-4 border rounded-lg hover:bg-gray-50 transition-colors">
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="font-medium text-gray-900">{district.name}</h4>
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getRiskColor(district.risk)}`}>
-                    {district.risk}
-                  </span>
+          {loadingWeather ? (
+            <p className="text-center text-gray-500 py-8">
+              Memuat data cuaca...
+            </p>
+          ) : weatherData.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {weatherData.map((district, index) => (
+                <div
+                  key={index}
+                  className="p-4 border rounded-lg hover:bg-blue-50 transition-colors"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="font-medium text-gray-900">{district.name}</h4>
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs font-medium ${getRiskColor(
+                        district.risk
+                      )}`}
+                    >
+                      {district.risk}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm text-gray-600">
+                    <span className="flex items-center space-x-1">
+                      <Thermometer className="w-4 h-4" />
+                      <span>{district.temperature}°C</span>
+                    </span>
+                    <span className="flex items-center space-x-1">
+                      <Wind className="w-4 h-4" />
+                      <span>{district.condition}</span>
+                    </span>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between text-sm text-gray-600">
-                  <span className="flex items-center space-x-1">
-                    <Thermometer className="w-4 h-4" />
-                    <span>{district.temp}</span>
-                  </span>
-                  <span className="flex items-center space-x-1">
-                    <Wind className="w-4 h-4" />
-                    <span>{district.condition}</span>
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-center text-gray-500 py-8">
+              Data cuaca tidak tersedia.
+            </p>
+          )}
         </CardContent>
       </Card>
 
-      {/* Notice for Public Access */}
-      <Card className="bg-green-50 border-green-200">
-        <CardContent className="p-6">
-          <div className="flex items-start space-x-3">
-            <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
-              <Eye className="w-5 h-5 text-green-600" />
+      {/* Ringkasan Harga Komoditas */}
+      <Card className="border-green-100">
+        <CardHeader>
+          <CardTitle>Ringkasan Harga Komoditas</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loadingCommodity ? (
+            <p className="text-center text-gray-500 py-8">
+              Memuat data harga komoditas...
+            </p>
+          ) : commodityData.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {commodityData.map((item, index) => (
+                <div
+                  key={index}
+                  className="p-4 border rounded-lg hover:bg-green-50 transition-colors"
+                >
+                  <h4 className="font-medium text-gray-900 mb-1">{item.name}</h4>
+                  <p className="text-sm text-gray-700">
+                    Harga:{" "}
+                    <span className={`font-semibold ${item.price && item.price > 0 ? 'text-green-700' : 'text-gray-400'}`}>
+                      {item.price && item.price > 0 
+                        ? `Rp ${item.price.toLocaleString()}` 
+                        : "Belum ada data"}
+                    </span>
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    Perubahan: {item.change || "-"}
+                  </p>
+                </div>
+              ))}
             </div>
-            <div>
-              <h3 className="font-semibold text-green-900 mb-2">Akses Gratis untuk Semua</h3>
-              <p className="text-green-800 mb-3">
-                Sistem EcoScope Wonosobo dapat diakses secara gratis tanpa perlu registrasi. 
-                Semua fitur prediksi cuaca, harga, dan analisis lereng tersedia untuk mendukung petani lokal.
-              </p>
-              <p className="text-sm text-green-700">
-                💡 Tip: Bookmark halaman ini untuk akses yang lebih mudah di kemudian hari
-              </p>
-            </div>
-          </div>
+          ) : (
+            <p className="text-center text-gray-500 py-8">
+              Belum ada data harga komoditas dari AI Market.
+            </p>
+          )}
         </CardContent>
       </Card>
     </div>

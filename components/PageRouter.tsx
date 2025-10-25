@@ -1,7 +1,8 @@
 import React from 'react';
 import { Dashboard } from './Dashboard';
 import { WeatherPrediction } from './WeatherPrediction';
-import { PricePrediction } from './PricePrediction';
+import { BMKGWeatherDashboard } from './BMKGWeatherDashboard';
+import { PricePrediction } from './PricePredictionNew';
 import { SlopeAnalysis } from './SlopeAnalysis';
 import { AdminDashboard } from './AdminDashboard';
 import { UserManagement } from './UserManagement';
@@ -29,6 +30,9 @@ export function PageRouter({ currentPage, userRole, onNavigate, onLogout, isLogg
     
     case 'weather':
       return <WeatherPrediction />;
+    
+    case 'bmkg-weather':
+      return <BMKGWeatherDashboard />;
     
     case 'price-prediction':
       return <PricePrediction />;

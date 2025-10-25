@@ -3,216 +3,203 @@ import pandas as pd
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 import logging
-import traceback
 import numpy as np
+import traceback
 
 from app.models.weather_model import WeatherData, WeatherPrediction
 
-# Try to import Prophet
+# === Coba import Prophet ===
 try:
     from prophet import Prophet
     PROPHET_AVAILABLE = True
     logging.info("✅ Prophet ML library loaded successfully")
-except Exception as e:
-    logging.info("ℹ️ Prophet not available. Will use Simple Moving Average fallback method.")
+except Exception:
     PROPHET_AVAILABLE = False
-
-# Endpoint BMKG Banjarnegara (contoh)
-BMKG_ENDPOINT = "https://api.bmkg.go.id/publik/prakiraan-cuaca?adm4=31.71.03.1001"
+    logging.info("ℹ️ Prophet not available. Using Simple Moving Average fallback.")
 
 
-# ---- 1. Ambil data cuaca dari API BMKG ----
+# 🌦 Daftar kecamatan di Wonosobo (kode adm4 BMKG)
+DISTRICTS = [
+    {"name": "Wadaslintang", "adm4": "33.07.01.2001"},
+    {"name": "Kalikajar", "adm4": "33.07.02.1001"},
+    {"name": "Wonosobo Kota", "adm4": "33.07.03.1001"},
+    {"name": "Leksono", "adm4": "33.07.04.1001"},
+    {"name": "Kertek", "adm4": "33.07.05.1001"},
+    {"name": "Garung", "adm4": "33.07.06.1001"},
+    {"name": "Kaliwiro", "adm4": "33.07.07.1001"},
+    {"name": "Kalibawang", "adm4": "33.07.08.1001"},
+    {"name": "Selomerto", "adm4": "33.07.09.1001"},
+    {"name": "Kejajar", "adm4": "33.07.10.1001"},
+    {"name": "Mojotengah", "adm4": "33.07.11.1001"},
+]
+
+
+# === 1️⃣ Ambil data cuaca dari semua kecamatan yang valid ===
 def fetch_weather_data():
-    try:
-        res = requests.get(BMKG_ENDPOINT, timeout=15)
-        res.raise_for_status()
-        data = res.json()
-    except Exception as e:
-        logging.error("Gagal mengambil data dari BMKG: %s", traceback.format_exc())
-        raise RuntimeError(f"Gagal mengambil data BMKG: {e}")
+    all_records = []
 
-    records = []
+    for d in DISTRICTS:
+        try:
+            url = f"https://api.bmkg.go.id/publik/prakiraan-cuaca?adm4={d['adm4']}"
+            res = requests.get(url, timeout=10)
+            res.raise_for_status()
+            data = res.json()
 
-    try:
-        # Struktur API BMKG yang baru: data -> [lokasi -> cuaca]
-        location_name = data.get("lokasi", {}).get("desa", "Unknown")
-        
-        # Loop through data array
-        for item in data.get("data", []):
-            cuaca_array = item.get("cuaca", [])
-            
-            # cuaca is an array of arrays, flatten it
-            for day_forecast in cuaca_array:
-                for forecast in day_forecast:
-                    records.append({
-                        "ds": forecast.get("datetime"),
-                        "temperature": float(forecast.get("t", 0)),
-                        "humidity": float(forecast.get("hu", 0)),
-                        "rainfall": float(forecast.get("tp", 0)),
-                        "wind_speed": float(forecast.get("ws", 0)),
-                        "location": location_name
+            cuaca_list = []
+            for item in data.get("data", []):
+                if "cuaca" in item:
+                    cuaca_list.extend(item["cuaca"])
+
+            if not cuaca_list:
+                logging.warning(f"⚠️ Tidak ada data untuk {d['name']}")
+                continue
+
+            for fset in cuaca_list:
+                for f in fset:
+                    all_records.append({
+                        "ds": f.get("datetime"),
+                        "temperature": float(f.get("t", 0)),
+                        "humidity": float(f.get("hu", 0)),
+                        "rainfall": float(f.get("tp", 0)),
+                        "wind_speed": float(f.get("ws", 0)),
+                        "location": d["name"]
                     })
-    except Exception as e:
-        logging.error("Gagal parsing data BMKG: %s", traceback.format_exc())
-        raise RuntimeError(f"Struktur JSON BMKG tidak sesuai: {e}")
 
-    df = pd.DataFrame(records)
+            logging.info(f"✅ {d['name']}: berhasil ambil {len(cuaca_list)} entri")
+
+        except requests.exceptions.RequestException as e:
+            logging.warning(f"⚠️ Gagal ambil {d['name']}: {e}")
+        except Exception as e:
+            logging.warning(f"⚠️ Gagal parsing {d['name']}: {traceback.format_exc()}")
+
+    df = pd.DataFrame(all_records)
     if df.empty:
-        raise ValueError("Data BMKG kosong atau tidak terbaca.")
+        raise ValueError("❌ Tidak ada data BMKG yang berhasil diambil.")
 
     df["ds"] = pd.to_datetime(df["ds"], errors="coerce")
     df = df.dropna(subset=["ds", "temperature"])
     return df
 
 
-# ---- 2. Simpan data mentah ke tabel weather_data ----
+# === 2️⃣ Simpan data ke DB ===
 def save_weather_data(db: Session, df: pd.DataFrame):
+    saved = 0
     for _, row in df.iterrows():
-        weather = WeatherData(
-            location_name=row.get("location", "BMKG"),
-            temperature=row["temperature"],
-            humidity=row.get("humidity"),
-            rainfall=row.get("rainfall"),
-            wind_speed=row.get("wind_speed"),
-            date=row["ds"].date(),
-        )
-        db.add(weather)
+        try:
+            record = WeatherData(
+                date=row["ds"].date(),
+                location_name=row.get("location", "BMKG"),
+                temperature=row.get("temperature"),
+                humidity=row.get("humidity"),
+                rainfall=row.get("rainfall"),
+                wind_speed=row.get("wind_speed"),
+            )
+            db.add(record)
+            saved += 1
+        except Exception as e:
+            logging.warning(f"⚠️ Gagal simpan record: {e}")
+
     db.commit()
+    logging.info(f"✅ Berhasil simpan {saved} data dari {df['location'].nunique()} kecamatan.")
 
 
-# ---- Simple prediction fallback ----
-def predict_weather_simple(db: Session, days_ahead: int = 3):
-    """Simple moving average prediction when Prophet is not available"""
-    logging.info("🔄 Using Simple Moving Average for weather prediction")
-    
-    query = db.query(WeatherData).order_by(WeatherData.date).all()
-    
-    if not query:
+# === 3️⃣ Fallback prediksi sederhana (SMA) ===
+def predict_weather_simple(db: Session, days_ahead: int = 3, location: str = None):
+    logging.info("🔄 Menggunakan Simple Moving Average untuk prediksi cuaca...")
+
+    query = db.query(WeatherData)
+    if location:
+        query = query.filter(WeatherData.location_name == location)
+    data = query.order_by(WeatherData.date).all()
+
+    if not data:
+        logging.info("⚠️ Tidak ada data di DB, mengambil dari BMKG...")
         df = fetch_weather_data()
-        if df.empty:
-            raise ValueError("Tidak ada data cuaca dari BMKG.")
         save_weather_data(db, df)
-        query = db.query(WeatherData).order_by(WeatherData.date).all()
-    
-    df = pd.DataFrame([{
-        "date": r.date,
-        "temperature": r.temperature
-    } for r in query if r.temperature is not None])
-    
+        query = db.query(WeatherData)
+        if location:
+            query = query.filter(WeatherData.location_name == location)
+        data = query.order_by(WeatherData.date).all()
+
+    df = pd.DataFrame([{"date": d.date, "temperature": d.temperature} for d in data if d.temperature is not None])
     if df.empty:
-        raise ValueError("Data historis kosong.")
-    
-    # Calculate moving average
-    window_size = min(7, len(df))
-    recent_temps = df.tail(window_size)["temperature"].values
-    avg_temp = float(np.mean(recent_temps))  # Convert to Python float
-    std_temp = float(np.std(recent_temps)) if len(recent_temps) > 1 else 3.0
-    
-    logging.info(f"📊 Using {window_size} days of historical data. Avg temp: {avg_temp:.1f}°C, Std: {std_temp:.1f}°C")
-    
+        raise ValueError(f"❌ Tidak ada data historis untuk lokasi {location or 'semua lokasi'}.")
+
+    # Hitung rata-rata & deviasi standar suhu terakhir
+    window = min(7, len(df))
+    avg_temp = np.mean(df.tail(window)["temperature"])
+    std_temp = np.std(df.tail(window)["temperature"])
     last_date = df["date"].max()
-    predictions = []
-    
+
+    preds = []
     for i in range(1, days_ahead + 1):
         pred_date = last_date + timedelta(days=i)
-        predicted_temp = avg_temp
-        
         pred = WeatherPrediction(
             date=pred_date,
-            predicted_temp=round(float(predicted_temp), 2),  # Convert to Python float
-            lower_bound=round(float(predicted_temp - std_temp), 2),
-            upper_bound=round(float(predicted_temp + std_temp), 2),
-            source="Simple Moving Average"
+            predicted_temp=round(avg_temp, 2),
+            lower_bound=round(avg_temp - std_temp, 2),
+            upper_bound=round(avg_temp + std_temp, 2),
+            source=f"SMA - {location or 'Global'}"
         )
         db.add(pred)
-        predictions.append(pred)
-    
+        preds.append(pred)
+
     db.commit()
-    logging.info(f"✅ Generated {len(predictions)} predictions using Simple Moving Average")
-    return predictions
+    logging.info(f"✅ Generated {len(preds)} prediksi sederhana untuk {location or 'semua lokasi'}.")
+    return preds
 
 
-# ---- 3. Prediksi suhu dengan Prophet atau fallback ----
-def predict_weather(db: Session, days_ahead: int = 3):
-    """Main prediction function with fallback support"""
-    
-    # If Prophet is not available, use simple method
+# === 4️⃣ Prediksi cuaca dengan Prophet (utama) ===
+def predict_weather(db: Session, days_ahead: int = 3, location: str = None):
     if not PROPHET_AVAILABLE:
-        logging.info("ℹ️ Using Simple Moving Average for weather predictions (Prophet not installed)")
-        return predict_weather_simple(db, days_ahead)
-    
-    # Ambil data historis dari DB
-    query = db.query(WeatherData).order_by(WeatherData.date).all()
+        return predict_weather_simple(db, days_ahead, location)
 
-    # Jika belum ada data, ambil dari BMKG dan simpan
-    if not query:
+    query = db.query(WeatherData)
+    if location:
+        query = query.filter(WeatherData.location_name == location)
+    data = query.order_by(WeatherData.date).all()
+
+    if not data:
+        logging.info(f"⚠️ Tidak ada data untuk {location or 'semua lokasi'}, fetch ulang dari BMKG...")
         df = fetch_weather_data()
-        if df.empty:
-            raise ValueError("Tidak ada data cuaca dari BMKG.")
         save_weather_data(db, df)
-        query = db.query(WeatherData).order_by(WeatherData.date).all()
+        query = db.query(WeatherData)
+        if location:
+            query = query.filter(WeatherData.location_name == location)
+        data = query.order_by(WeatherData.date).all()
 
-    # Konversi hasil query menjadi DataFrame untuk Prophet
-    df = pd.DataFrame([{
-        "ds": r.date,
-        "y": r.temperature
-    } for r in query if r.temperature is not None])
+    df = pd.DataFrame([{"ds": d.date, "y": d.temperature} for d in data if d.temperature is not None])
+    if df.empty:
+        raise ValueError(f"❌ Tidak ada data historis untuk {location or 'semua lokasi'}.")
 
-    if df.empty or df["y"].isna().all():
-        raise ValueError("Data historis kosong, tidak dapat membuat model prediksi.")
-
-    # Try Prophet, fallback to simple if it fails
     try:
-        logging.info("Attempting to use Prophet ML model for predictions...")
-        
-        # Latih model Prophet - remove stan_backend parameter
         model = Prophet(
-            daily_seasonality=False,  # Reduced complexity
+            daily_seasonality=False,
             yearly_seasonality=False,
-            weekly_seasonality=False
+            weekly_seasonality=False,
         )
-        
-        # Suppress Prophet's verbose output
-        import sys
-        from io import StringIO
-        old_stdout = sys.stdout
-        old_stderr = sys.stderr
-        sys.stdout = StringIO()
-        sys.stderr = StringIO()
-        
-        try:
-            model.fit(df)
-            
-            # Prediksi untuk beberapa hari ke depan
-            future = model.make_future_dataframe(periods=days_ahead, freq="D")
-            forecast = model.predict(future)
-        finally:
-            sys.stdout = old_stdout
-            sys.stderr = old_stderr
+        model.fit(df)
+        future = model.make_future_dataframe(periods=days_ahead, freq="D")
+        forecast = model.predict(future)
 
         results = forecast[["ds", "yhat", "yhat_lower", "yhat_upper"]].tail(days_ahead)
-
-        predictions = []
+        preds = []
         for _, row in results.iterrows():
             pred = WeatherPrediction(
                 date=row["ds"].date(),
-                predicted_temp=float(row["yhat"]),  # Convert to Python float
+                predicted_temp=float(row["yhat"]),
                 lower_bound=float(row["yhat_lower"]),
                 upper_bound=float(row["yhat_upper"]),
-                source="Prophet ML Model"
+                source=f"Prophet ML Model - {location or 'Global'}"
             )
             db.add(pred)
-            predictions.append(pred)
+            preds.append(pred)
 
         db.commit()
-        logging.info("✅ Prophet prediction successful")
-        return predictions
-        
+        logging.info(f"✅ Prophet sukses untuk {location or 'semua lokasi'}.")
+        return preds
+
     except Exception as e:
-        logging.info("ℹ️ Prophet ML model not available. Using Simple Moving Average fallback method.")
-        # Only log full error in debug mode
-        if logging.getLogger().level == logging.DEBUG:
-            logging.debug("Prophet error details: %s", traceback.format_exc())
-        
+        logging.warning(f"⚠️ Prophet gagal ({e}), fallback ke SMA untuk {location or 'global'}")
         db.rollback()
-        return predict_weather_simple(db, days_ahead)
+        return predict_weather_simple(db, days_ahead, location)

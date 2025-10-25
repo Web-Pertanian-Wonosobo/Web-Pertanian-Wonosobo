@@ -8,4 +8,4 @@ class MarketPriceCreate(BaseModel):
     market_location: str
     unit: str
     price: float
-    date: Optional[date] = None  
+    date: Optional[date] = None
