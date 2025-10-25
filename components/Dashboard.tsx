@@ -11,6 +11,7 @@ import {
   Wind,
   Eye,
 } from "lucide-react";
+import { fetchAllKomoditas, type Komoditas } from "../src/services/komoditasApi";
 
 interface WeatherDistrict {
   name: string;
@@ -70,21 +71,22 @@ export function Dashboard({ onNavigate }: DashboardProps) {
     return () => clearInterval(interval);
   }, []);
 
-  // === Fetch Data Komoditas ===
+  // === Fetch Data Komoditas dari API Disdagkopukm ===
   useEffect(() => {
     const fetchCommodities = async () => {
       setLoadingCommodity(true);
       try {
-        const response = await fetch("http://127.0.0.1:8000/api/market/all");
-        if (!response.ok) throw new Error("Gagal mengambil data komoditas");
-        const data = await response.json();
+        const data = await fetchAllKomoditas();
+        console.log("Data komoditas lengkap dari semua API:", data);
 
-        if (!Array.isArray(data) || data.length === 0) {
-          console.warn("Data komoditas kosong atau tidak valid");
-          setCommodityData([]);
-        } else {
-          setCommodityData(data);
-        }
+        // Konversi ke format yang digunakan Dashboard
+        const normalized = data.slice(0, 6).map((item: Komoditas) => ({
+          name: item.nama || "Tidak diketahui",
+          price: item.harga || 0,
+          change: item.perubahan || "0%",
+        }));
+
+        setCommodityData(normalized);
       } catch (error) {
         console.error("Gagal memuat data komoditas:", error);
         setCommodityData([]);
@@ -93,11 +95,10 @@ export function Dashboard({ onNavigate }: DashboardProps) {
       }
     };
 
-    // Panggil pertama kali
     fetchCommodities();
-
-    // Auto refresh tiap 5 menit
-    const interval = setInterval(fetchCommodities, 5 * 60 * 1000);
+    
+    // Auto refresh tiap 10 menit
+    const interval = setInterval(fetchCommodities, 10 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
 
@@ -274,8 +275,10 @@ export function Dashboard({ onNavigate }: DashboardProps) {
                   <h4 className="font-medium text-gray-900 mb-1">{item.name}</h4>
                   <p className="text-sm text-gray-700">
                     Harga:{" "}
-                    <span className="font-semibold text-green-700">
-                      Rp {item.price?.toLocaleString() || "-"}
+                    <span className={`font-semibold ${item.price && item.price > 0 ? 'text-green-700' : 'text-gray-400'}`}>
+                      {item.price && item.price > 0 
+                        ? `Rp ${item.price.toLocaleString()}` 
+                        : "Belum ada data"}
                     </span>
                   </p>
                   <p className="text-xs text-gray-500">
