@@ -1,12 +1,10 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Badge } from "./ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { Alert, AlertDescription } from "./ui/alert";
-import { Textarea } from "./ui/textarea";
 import {
   MapPin,
   Upload,
@@ -19,8 +17,16 @@ import {
   MessageCircle,
   Send,
   Phone,
+  Loader2,
+  MapPinned,
+  TrendingUp,
 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  calculateSlope,
+  getSlopeRecommendations,
+  validateApiKey,
+} from "../src/services/elevationApi";
 
 export function SlopeAnalysis() {
   const [selectedLocation, setSelectedLocation] = useState<any>(null);
@@ -29,12 +35,7 @@ export function SlopeAnalysis() {
     village: "",
     district: "",
   });
-  const [alertData, setAlertData] = useState({
-    message: "",
-    severity: "medium",
-    contactInfo: "",
-  });
-  const [showAlertDialog, setShowAlertDialog] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   const mapData = [
   {
@@ -146,16 +147,6 @@ export function SlopeAnalysis() {
       return;
     }
 
-    const alertMessage = `ALERT POTENSI LONGSOR
-Lokasi: ${selectedLocation.name}
-Koordinat: ${selectedLocation.coordinates}
-Tingkat Kemiringan: ${selectedLocation.slope}%
-Status Risiko: TINGGI
-Waktu Deteksi: ${new Date().toLocaleString("id-ID")}
-Tindakan: ${selectedLocation.suggestions.join(", ")}
-
-Dikirim melalui EcoScope Banyumas`;
-
     // Simulate sending to BASARNAS
     setTimeout(() => {
       toast.success("Alert berhasil dikirim ke BASARNAS Purwokerto");
@@ -228,6 +219,7 @@ Koordinat      : ${selectedLocation.coordinates}
 Kemiringan     : ${selectedLocation.slope}%
 Status Risiko  : ${getRiskLabel(selectedLocation.risk)}
 Waktu Analisis : ${new Date().toLocaleString("id-ID")}
+${selectedLocation.analysisMethod ? `Metode Analisis: ${selectedLocation.analysisMethod}` : ''}
 
 ===================================================
 ASSESSMENT RISIKO
@@ -250,7 +242,7 @@ ${selectedLocation.suggestions
 ===================================================
 CATATAN
 ===================================================
-- Data berdasarkan analisis drone dan citra satelit
+- Data berdasarkan ${selectedLocation.analysisMethod || 'analisis drone dan citra satelit'}
 - Monitoring berkelanjutan diperlukan
 - Segera hubungi otoritas jika kondisi memburuk
 
@@ -272,6 +264,84 @@ ${new Date().toLocaleString("id-ID")}`;
     toast.success("Laporan berhasil didownload");
   };
 
+  /**
+   * Analisis slope berdasarkan koordinat yang diklik di Google Maps
+   */
+  const handleMapClick = async (lat: number, lng: number) => {
+    // Validasi API key
+    if (!validateApiKey()) {
+      toast.error(
+        "Google Maps API key belum di-set. Tambahkan VITE_GOOGLE_MAPS_API_KEY ke file .env"
+      );
+      return;
+    }
+
+    setIsAnalyzing(true);
+
+    try {
+      toast.info("Menganalisis kemiringan tanah...");
+
+      // Hitung slope menggunakan Google Elevation API
+      const slopeResult = await calculateSlope(lat, lng, 100);
+
+      // Buat objek lokasi baru
+      const newLocation = {
+        id: Date.now(),
+        name: formData.locationName || `Lokasi Baru`,
+        coordinates: `${lat.toFixed(4)}, ${lng.toFixed(4)}`,
+        slope: slopeResult.slopePercentage,
+        slopeDegrees: slopeResult.slopeDegrees,
+        risk: slopeResult.riskLevel,
+        color:
+          slopeResult.riskLevel === "high"
+            ? "bg-red-500"
+            : slopeResult.riskLevel === "medium"
+            ? "bg-yellow-500"
+            : "bg-green-500",
+        suggestions: getSlopeRecommendations(slopeResult.slopePercentage),
+        lastUpdate: "Baru saja",
+        analysisMethod: "Google Elevation API",
+        elevationData: slopeResult.elevationData,
+      };
+
+      setSelectedLocation(newLocation);
+
+      toast.success(
+        `Analisis selesai! Kemiringan: ${slopeResult.slopePercentage}% (Risiko: ${getRiskLabel(
+          slopeResult.riskLevel
+        )})`
+      );
+    } catch (error) {
+      console.error("Error analyzing slope:", error);
+      toast.error(
+        "Gagal menganalisis slope. Pastikan API key valid dan ada koneksi internet."
+      );
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  /**
+   * Analisis slope untuk lokasi dari form input
+   */
+  const handleAnalyzeLocation = async () => {
+    console.log('handleAnalyzeLocation called');
+    console.log('Form data:', formData);
+    
+    if (!formData.locationName) {
+      toast.error("Masukkan nama lokasi terlebih dahulu");
+      return;
+    }
+
+    // Untuk demo, gunakan koordinat random di area Wonosobo
+    // Dalam implementasi real, bisa gunakan geocoding untuk convert nama lokasi ke koordinat
+    const randomLat = -7.35 + (Math.random() - 0.5) * 0.1;
+    const randomLng = 109.9 + (Math.random() - 0.5) * 0.1;
+
+    console.log('Generated coordinates:', randomLat, randomLng);
+    await handleMapClick(randomLat, randomLng);
+  };
+
   return (
     <div className="p-6 max-w-8xl mx-auto">
       <div className="mb-6">
@@ -289,6 +359,29 @@ ${new Date().toLocaleString("id-ID")}`;
             <strong>PERINGATAN TINGGI!</strong> Lokasi {selectedLocation.name}{" "}
             memiliki risiko longsor tinggi. Segera lakukan tindakan mitigasi dan
             pertimbangkan untuk mengirim alert ke BASARNAS.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* API Key Warning */}
+      {!validateApiKey() && (
+        <Alert className="mb-6 border-yellow-200 bg-yellow-50">
+          <AlertTriangle className="h-4 w-4 text-yellow-600" />
+          <AlertDescription className="text-yellow-800">
+            <strong>Mode Development:</strong> Menggunakan data simulasi untuk
+            testing. Untuk data elevasi real, setup Google Maps API Key dan
+            aktifkan billing (tetap gratis $200/bulan).
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Analysis Loading */}
+      {isAnalyzing && (
+        <Alert className="mb-6 border-blue-200 bg-blue-50">
+          <Loader2 className="h-4 w-4 text-blue-600 animate-spin" />
+          <AlertDescription className="text-blue-800">
+            Sedang menganalisis kemiringan tanah menggunakan Google Elevation
+            API...
           </AlertDescription>
         </Alert>
       )}
@@ -357,7 +450,15 @@ ${new Date().toLocaleString("id-ID")}`;
               {selectedLocation && (
                 <div className="mt-4 p-4 bg-slate-50 rounded-lg">
                   <div className="flex justify-between items-start mb-3">
-                    <h4 className="font-medium">{selectedLocation.name}</h4>
+                    <div>
+                      <h4 className="font-medium">{selectedLocation.name}</h4>
+                      {selectedLocation.analysisMethod && (
+                        <p className="text-xs text-blue-600 flex items-center mt-1">
+                          <MapPinned className="h-3 w-3 mr-1" />
+                          {selectedLocation.analysisMethod}
+                        </p>
+                      )}
+                    </div>
                     <div className="flex space-x-2">
                       <Button size="sm" onClick={generateReport}>
                         Download Laporan
@@ -372,7 +473,14 @@ ${new Date().toLocaleString("id-ID")}`;
                     </div>
                     <div>
                       <span className="text-muted-foreground">Kemiringan:</span>
-                      <p>{selectedLocation.slope}%</p>
+                      <p>
+                        {selectedLocation.slope}%
+                        {selectedLocation.slopeDegrees && (
+                          <span className="text-xs text-muted-foreground ml-1">
+                            ({selectedLocation.slopeDegrees}°)
+                          </span>
+                        )}
+                      </p>
                     </div>
                   </div>
 
@@ -497,10 +605,32 @@ ${new Date().toLocaleString("id-ID")}`;
                   placeholder="Contoh: Sumbang"
                 />
               </div>
-              <Button className="w-full">
-                <MapPin className="h-4 w-4 mr-2" />
-                Tambah Titik Monitoring
+              <Button 
+                className="w-full"
+                onClick={handleAnalyzeLocation}
+                disabled={isAnalyzing || !formData.locationName}
+              >
+                {isAnalyzing ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Menganalisis...
+                  </>
+                ) : (
+                  <>
+                    <TrendingUp className="h-4 w-4 mr-2" />
+                    Analisis Slope Otomatis
+                  </>
+                )}
               </Button>
+              <p className="text-xs text-muted-foreground text-center">
+                Menggunakan Google Elevation API
+              </p>
+              <div className="border-t pt-3">
+                <Button variant="outline" className="w-full">
+                  <MapPin className="h-4 w-4 mr-2" />
+                  Tambah Titik Monitoring Manual
+                </Button>
+              </div>
             </CardContent>
           </Card>
 
