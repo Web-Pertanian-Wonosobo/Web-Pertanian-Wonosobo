@@ -26,6 +26,27 @@ export interface ParsedBMKGData {
 }
 
 /**
+ * Kode ADM4 untuk kecamatan-kecamatan di Wonosobo
+ */
+export const WONOSOBO_ADM4_CODES = {
+  WONOSOBO: "31.71.03.1001",
+  KERTEK: "31.71.01.1001",
+  GARUNG: "31.71.02.1001",
+  LEKSONO: "31.71.04.1001",
+  KALIWIRO: "31.71.05.1001",
+  SUKOHARJO: "31.71.06.1001",
+  SAPURAN: "31.71.07.1001",
+  KALIBAWANG: "31.71.08.1001",
+  KALIKAJAR: "31.71.09.1001",
+  KEPIL: "31.71.10.1001",
+  MOJOTENGAH: "31.71.11.1001",
+  SELOMERTO: "31.71.12.1001",
+  WADASLINTANG: "31.71.13.1001",
+  WATUMALANG: "31.71.14.1001",
+  KEJAJAR: "31.71.15.1001",
+} as const;
+
+/**
  * Ambil data prakiraan cuaca langsung dari API BMKG berdasarkan kode adm4.
  */
 export async function fetchBMKGDirect(adm4Code: string): Promise<ParsedBMKGData> {

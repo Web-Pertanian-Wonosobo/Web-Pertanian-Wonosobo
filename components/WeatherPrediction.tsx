@@ -16,7 +16,6 @@ import {
   Thermometer,
   Droplets,
   Sprout,
-  MapPin,
 } from "lucide-react";
 import {
   LineChart,
@@ -27,52 +26,122 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { fetchWeatherPredictions } from "../src/services/weatherApi";
+import {
+  fetchWeatherPredictions,
+  fetchCurrentWeather,
+  type WeatherData,
+  type WeatherPrediction,
+} from "../src/services/weatherApi";
+
 import {
   fetchBMKGDirect,
   groupForecastsByDay,
   getAverageTemp,
   getTotalRainfall,
   getDominantWeather,
+  WONOSOBO_ADM4_CODES,
   type ParsedBMKGData,
 } from "../src/services/bmkgApi";
 
-// Tentukan ikon berdasarkan deskripsi cuaca
+
+// === Tentukan ikon berdasarkan deskripsi cuaca ===
 const getIconForWeather = (weatherDesc: string) => {
+  if (!weatherDesc) return Sun;
   if (weatherDesc.includes("Cerah")) return Sun;
   if (weatherDesc.includes("Hujan")) return CloudRain;
   if (weatherDesc.includes("Berawan")) return Cloud;
   return Sun;
 };
 
-export function WeatherPrediction() {
-  const [selectedLocation, setSelectedLocation] = useState("33.07.01.2001"); // default Wonosobo
-  const [bmkgDetailData, setBmkgDetailData] = useState<ParsedBMKGData | null>(null);
-  const [backendPredictions, setBackendPredictions] = useState<any>([]);
-  const [loading, setLoading] = useState(false);
-  const [isLoadingBMKG, setIsLoadingBMKG] = useState(true);
+// === Mapping nama lokasi ke kode ADM4 BMKG ===
+const getADM4Code = (locationName: string): string => {
+  // Normalisasi nama lokasi (uppercase, hapus spasi)
+  const normalized = locationName.toUpperCase().trim().replace(/\s+/g, '');
+  
+  // Mapping langsung ke WONOSOBO_ADM4_CODES
+  const mapping: Record<string, keyof typeof WONOSOBO_ADM4_CODES> = {
+    'KALIBAWANG': 'KALIBAWANG',
+    'WONOSOBO': 'WONOSOBO',
+    'KERTEK': 'KERTEK',
+    'GARUNG': 'GARUNG',
+    'LEKSONO': 'LEKSONO',
+    'KALIWIRO': 'KALIWIRO',
+    'SUKOHARJO': 'SUKOHARJO',
+    'SAPURAN': 'SAPURAN',
+    'KALIKAJAR': 'KALIKAJAR',
+    'KEPIL': 'KEPIL',
+    'MOJOTENGAH': 'MOJOTENGAH',
+    'SELOMERTO': 'SELOMERTO',
+    'WADASLINTANG': 'WADASLINTANG',
+    'WATUMALANG': 'WATUMALANG',
+    'KEJAJAR': 'KEJAJAR',
+  };
+  
+  const key = mapping[normalized];
+  if (key && WONOSOBO_ADM4_CODES[key]) {
+    return WONOSOBO_ADM4_CODES[key];
+  }
+  
+  // Default ke Wonosobo jika tidak ditemukan
+  return WONOSOBO_ADM4_CODES.WONOSOBO;
+};
 
-  // === Ambil data BMKG sesuai lokasi ===
+export function WeatherPrediction() {
+  const [locations, setLocations] = useState<string[]>([]);
+  const [selectedLocation, setSelectedLocation] = useState<string>("");
+  const [currentWeather, setCurrentWeather] = useState<WeatherData[]>([]);
+  const [bmkgDetailData, setBmkgDetailData] = useState<ParsedBMKGData | null>(null);
+  const [backendPredictions, setBackendPredictions] = useState<WeatherPrediction[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // === Ambil data dari backend (/weather/current) ===
   useEffect(() => {
-    const loadData = async () => {
-      setIsLoadingBMKG(true);
+    const loadWeather = async () => {
+      setIsLoading(true);
       try {
-        const bmkgDetail = await fetchBMKGDirect(selectedLocation);
+        const data = await fetchCurrentWeather();
+        setCurrentWeather(data);
+
+        const uniqueLocations = [...new Set(data.map((item) => item.location_name))];
+        setLocations(uniqueLocations);
+        if (uniqueLocations.length > 0) {
+          setSelectedLocation(uniqueLocations[0]);
+        }
+      } catch (e) {
+        console.error("Gagal memuat data cuaca:", e);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadWeather();
+  }, []);
+
+  // === Ambil data BMKG sesuai lokasi terpilih ===
+  useEffect(() => {
+    const loadBMKG = async () => {
+      if (!selectedLocation) return;
+      try {
+        // Konversi nama lokasi ke kode ADM4
+        const adm4Code = getADM4Code(selectedLocation);
+        console.log(`Fetching BMKG data for ${selectedLocation} (${adm4Code})`);
+        const bmkgDetail = await fetchBMKGDirect(adm4Code);
         setBmkgDetailData(bmkgDetail);
       } catch (e) {
         console.error("Gagal memuat data BMKG:", e);
-      } finally {
-        setIsLoadingBMKG(false);
       }
     };
-    loadData();
+    loadBMKG();
   }, [selectedLocation]);
 
-  // === Prediksi AI ===
+  // === Ambil prediksi AI sesuai lokasi terpilih ===
   const handlePredictAI = async () => {
+    if (!selectedLocation) return;
     setLoading(true);
     try {
-      const predictions = await fetchWeatherPredictions(7);
+      console.log('Meminta prediksi untuk lokasi:', selectedLocation);
+      const predictions = await fetchWeatherPredictions(7, selectedLocation);
+      console.log('Prediksi diterima:', predictions);
       setBackendPredictions(predictions);
     } catch (e) {
       console.error("Gagal memuat prediksi AI:", e);
@@ -81,24 +150,39 @@ export function WeatherPrediction() {
     }
   };
 
-  if (isLoadingBMKG)
+  if (isLoading)
     return (
       <div className="p-6 flex justify-center items-center h-screen text-muted-foreground">
-        Memuat data BMKG...
+        Memuat data cuaca...
       </div>
     );
+
+  // === Filter data hari ini untuk lokasi terpilih ===
+  const today = new Date().toISOString().split("T")[0];
+  const todayWeather = currentWeather
+    .filter((w) => w.location_name === selectedLocation && w.date.startsWith(today));
+
+  const avgTemp = todayWeather.length
+    ? (todayWeather.reduce((sum, w) => sum + (w.temperature || 0), 0) / todayWeather.length).toFixed(1)
+    : "-";
+  const avgRain = todayWeather.length
+    ? (todayWeather.reduce((sum, w) => sum + (w.rainfall || 0), 0) / todayWeather.length).toFixed(1)
+    : "-";
+  const avgHum = todayWeather.length
+    ? (todayWeather.reduce((sum, w) => sum + (w.humidity || 0), 0) / todayWeather.length).toFixed(1)
+    : "-";
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <h1 className="text-3xl font-bold mb-2">Prediksi Cuaca</h1>
       <p className="text-muted-foreground mb-6">
-        Prakiraan cuaca dari BMKG dan prediksi AI/ML berbasis data cuaca terkini.
+        Prakiraan cuaca harian berdasarkan data BMKG dan model AI/ML.
       </p>
 
-      {/* === Pilihan Lokasi BMKG === */}
+      {/* === Dropdown Lokasi (otomatis dari backend) === */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
         <label htmlFor="location" className="font-medium mb-2 md:mb-0">
-          🌍 Pilih Lokasi BMKG:
+          🌍 Pilih Lokasi:
         </label>
 
         <select
@@ -107,85 +191,91 @@ export function WeatherPrediction() {
           onChange={(e) => setSelectedLocation(e.target.value)}
           className="border border-gray-300 rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-500"
         >
-          <option value="33.07.01.2001">Wonosobo - Banjarmangu</option>
-          <option value="33.04.12.1001">Banjarnegara - Sigaluh</option>
-          <option value="33.05.01.1001">Banyumas - Purwokerto</option>
-          <option value="33.01.03.1001">Magelang - Secang</option>
-          <option value="33.15.01.1001">Temanggung - Parakan</option>
+          {locations.map((loc) => (
+            <option key={loc} value={loc}>
+              {loc}
+            </option>
+          ))}
         </select>
       </div>
 
       {/* === Tab Navigasi === */}
-      <Tabs defaultValue="bmkg" className="space-y-6">
+      <Tabs defaultValue="today" className="space-y-6">
         <TabsList>
-          <TabsTrigger value="bmkg">Prakiraan Cuaca BMKG</TabsTrigger>
-          <TabsTrigger value="ml">Prediksi AI/ML</TabsTrigger>
+          <TabsTrigger value="today">Cuaca Hari Ini</TabsTrigger>
+          <TabsTrigger value="bmkg">Prakiraan BMKG</TabsTrigger>
+          <TabsTrigger value="ml">Prediksi AI / ML</TabsTrigger>
         </TabsList>
 
-        {/* ========== TAB BMKG ========== */}
-        <TabsContent value="bmkg">
-          <div className="space-y-6">
-            {/* Info Lokasi BMKG */}
-            {bmkgDetailData && (
-              <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <MapPin className="h-5 w-5 text-blue-600" />
-                        <h3 className="font-semibold text-lg">
-                          {bmkgDetailData.location.desa || "-"},{" "}
-                          {bmkgDetailData.location.kecamatan || "-"}
-                        </h3>
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        {bmkgDetailData.location.kotkab ||
-                          bmkgDetailData.location.provinsi ||
-                          "Data wilayah tidak tersedia"}
-                      </p>
-                      {bmkgDetailData.location.lat && bmkgDetailData.location.lon ? (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          📍 Koordinat: {bmkgDetailData.location.lat},{" "}
-                          {bmkgDetailData.location.lon}
-                        </p>
-                      ) : (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          📍 Koordinat tidak tersedia
-                        </p>
-                      )}
-                    </div>
-                    <Badge variant="outline" className="bg-blue-100 text-blue-800">
-                      <Cloud className="h-3 w-3 mr-1" />
-                      Data BMKG
+        {/* === CUACA HARI INI === */}
+        <TabsContent value="today">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Sun className="h-5 w-5 text-yellow-500" />
+                Ringkasan Cuaca Hari Ini ({selectedLocation})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {todayWeather.length > 0 ? (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                  <div>
+                    <Thermometer className="h-6 w-6 mx-auto text-orange-500" />
+                    <p className="text-sm">Suhu Rata-rata</p>
+                    <p className="font-bold text-lg">{avgTemp}°C</p>
+                  </div>
+                  <div>
+                    <Droplets className="h-6 w-6 mx-auto text-blue-500" />
+                    <p className="text-sm">Kelembapan</p>
+                    <p className="font-bold text-lg">{avgHum}%</p>
+                  </div>
+                  <div>
+                    <CloudRain className="h-6 w-6 mx-auto text-indigo-600" />
+                    <p className="text-sm">Curah Hujan</p>
+                    <p className="font-bold text-lg">{avgRain} mm</p>
+                  </div>
+                  <div>
+                    <Sprout className="h-6 w-6 mx-auto text-green-600" />
+                    <p className="text-sm">Kondisi</p>
+                    <Badge className="bg-green-100 text-green-700">
+                      {parseFloat(avgRain) > 10 ? "Hujan" : "Cerah"}
                     </Badge>
                   </div>
-                </CardContent>
-              </Card>
-            )}
+                </div>
+              ) : (
+                <p className="text-center text-muted-foreground py-6">
+                  Tidak ada data untuk hari ini.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-            {/* Prakiraan Harian */}
+        {/* === BMKG === */}
+        <TabsContent value="bmkg">
+          {bmkgDetailData ? (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <CloudRain className="h-5 w-5 text-blue-600" />
-                  Prakiraan Cuaca Harian
+                  Prakiraan BMKG ({selectedLocation})
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {bmkgDetailData && bmkgDetailData.forecasts.length > 0 ? (
+                {bmkgDetailData.forecasts && bmkgDetailData.forecasts.length > 0 ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                     {(() => {
                       const grouped = groupForecastsByDay(bmkgDetailData.forecasts);
                       return Object.keys(grouped)
                         .slice(0, 5)
-                        .map((day, index) => {
+                        .map((day, idx) => {
                           const daily = grouped[day];
                           const avg = getAverageTemp(daily);
                           const rain = getTotalRainfall(daily);
                           const weather = getDominantWeather(daily);
                           const Icon = getIconForWeather(weather);
                           return (
-                            <Card key={index} className="hover:shadow-md border-2">
+                            <Card key={idx} className="hover:shadow-md border-2">
                               <CardContent className="p-4 text-center space-y-2">
                                 <h3 className="font-semibold">{day}</h3>
                                 <Icon className="h-8 w-8 mx-auto text-blue-500" />
@@ -202,132 +292,113 @@ export function WeatherPrediction() {
                   </div>
                 ) : (
                   <p className="text-center text-muted-foreground py-8">
-                    Data BMKG tidak tersedia.
+                    Data BMKG tidak tersedia untuk lokasi ini.
                   </p>
                 )}
               </CardContent>
             </Card>
-
-            {/* Detail Prakiraan Per Jam */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Thermometer className="h-5 w-5 text-orange-500" />
-                  Detail Prakiraan Per Jam
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground mb-3">
-                  (Data per jam dari BMKG untuk lokasi yang dipilih)
-                </p>
-                {bmkgDetailData?.forecasts && bmkgDetailData.forecasts.length > 0 ? (
-                  <div className="divide-y divide-gray-200">
-                    {bmkgDetailData.forecasts.slice(0, 12).map((item, idx) => (
-                      <div key={idx} className="flex justify-between py-1 text-sm">
-                        <span>
-                          {new Date(item.datetime).toLocaleTimeString("id-ID", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </span>
-                        <span>{item.weatherDesc}</span>
-                        <span>{item.temperature}°C</span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-muted-foreground text-sm">
-                    Tidak ada data per jam untuk lokasi ini.
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Detail Hari Pertama */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Sprout className="h-5 w-5 text-green-600" />
-                  Detail Prediksi Hari Pertama
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-                  <div>
-                    <Thermometer className="h-5 w-5 mx-auto text-orange-500" />
-                    <p className="text-sm">Suhu</p>
-                    <p className="font-bold text-lg">19.1°C</p>
-                  </div>
-                  <div>
-                    <Droplets className="h-5 w-5 mx-auto text-blue-500" />
-                    <p className="text-sm">Batas Bawah</p>
-                    <p className="font-bold text-lg">13.7°C</p>
-                  </div>
-                  <div>
-                    <Thermometer className="h-5 w-5 mx-auto text-red-500" />
-                    <p className="text-sm">Batas Atas</p>
-                    <p className="font-bold text-lg">24.6°C</p>
-                  </div>
-                  <div>
-                    <Sprout className="h-5 w-5 mx-auto text-green-500" />
-                    <p className="text-sm">Saran Tanam</p>
-                    <Badge className="bg-green-100 text-green-700">
-                      Sangat Baik
-                    </Badge>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+          ) : (
+            <p className="text-center text-muted-foreground py-6">
+              Data BMKG belum dimuat.
+            </p>
+          )}
         </TabsContent>
 
-        {/* ========== TAB AI/ML ========== */}
+        {/* === PREDIKSI AI / ML === */}
         <TabsContent value="ml">
           <Card>
             <CardHeader className="flex flex-col md:flex-row md:items-center md:justify-between">
               <div className="flex items-center space-x-2">
                 <Zap className="h-5 w-5 text-yellow-500" />
-                <CardTitle>Prediksi Cuaca AI / ML</CardTitle>
+                <CardTitle>Prediksi AI / ML ({selectedLocation})</CardTitle>
               </div>
               <Button
                 onClick={handlePredictAI}
                 disabled={loading}
                 className="bg-blue-600 hover:bg-blue-700 text-white mt-3 md:mt-0"
               >
-                {loading ? "Memproses..." : "Prediksi AI/ML"}
+                {loading ? "Memproses..." : "Prediksi Sekarang"}
               </Button>
             </CardHeader>
 
             <CardContent>
               {loading ? (
                 <p className="text-center text-muted-foreground py-8">
-                  Menghitung prediksi cuaca...
+                  Menghitung prediksi...
                 </p>
-              ) : backendPredictions && backendPredictions.length > 0 ? (
+              ) : backendPredictions.length > 0 ? (
                 <>
+                  {/* Daftar prediksi */}
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-                    {backendPredictions.map((day: any, index: number) => {
-                      const date = new Date(day.date);
-                      const Icon = getIconForWeather(day.weather || "");
+                    {backendPredictions.map((day, index) => {
+                      // Debug: lihat struktur data
+                      if (index === 0) {
+                        console.log('Sample prediction data:', day);
+                        console.log('predicted_temp:', day.predicted_temp, 'type:', typeof day.predicted_temp);
+                      }
+                      
+                      // Parse date dengan berbagai cara untuk menangani format berbeda
+                      let date: Date;
+                      let dateString = "";
+                      let dayName = "";
+                      
+                      try {
+                        // Coba parsing langsung
+                        date = new Date(day.date);
+                        
+                        // Jika invalid, coba format lain
+                        if (isNaN(date.getTime())) {
+                          // Coba tambahkan 'T00:00:00' jika format YYYY-MM-DD
+                          date = new Date(day.date + 'T00:00:00');
+                        }
+                        
+                        // Jika masih invalid, gunakan hari dari sekarang + index
+                        if (isNaN(date.getTime())) {
+                          date = new Date();
+                          date.setDate(date.getDate() + index);
+                        }
+                        
+                        dayName = date.toLocaleDateString("id-ID", { weekday: "short" });
+                        dateString = date.toLocaleDateString("id-ID", { day: "numeric", month: "short" });
+                      } catch (e) {
+                        console.error("Error parsing date:", day.date, e);
+                        // Fallback: gunakan tanggal hari ini + index
+                        date = new Date();
+                        date.setDate(date.getDate() + index);
+                        dayName = date.toLocaleDateString("id-ID", { weekday: "short" });
+                        dateString = date.toLocaleDateString("id-ID", { day: "numeric", month: "short" });
+                      }
+                      
+                      const Icon = getIconForWeather("");
+                      
+                      // Ekstrak nilai dengan pengecekan yang lebih baik
+                      // Penting: Harus cek !== null && !== undefined, bukan truthy check
+                      // karena nilai 0 adalah valid tapi falsy
+                      const predTemp = (day.predicted_temp !== null && day.predicted_temp !== undefined)
+                        ? Number(day.predicted_temp).toFixed(1) 
+                        : "N/A";
+                      const lowerBound = (day.lower_bound !== null && day.lower_bound !== undefined)
+                        ? Number(day.lower_bound).toFixed(1) 
+                        : "N/A";
+                      const upperBound = (day.upper_bound !== null && day.upper_bound !== undefined)
+                        ? Number(day.upper_bound).toFixed(1) 
+                        : "N/A";
+                      
                       return (
                         <Card key={index} className="text-center border-2">
                           <CardContent className="p-4 space-y-3">
                             <div>
-                              <h3 className="font-medium">
-                                {date.toLocaleDateString("id-ID", { weekday: "short" })}
-                              </h3>
-                              <p className="text-xs text-muted-foreground">
-                                {date.toLocaleDateString("id-ID", { day: "numeric", month: "short" })}
-                              </p>
+                              <h3 className="font-medium">{dayName}</h3>
+                              <p className="text-xs text-muted-foreground">{dateString}</p>
                             </div>
                             <Icon className="h-10 w-10 mx-auto text-blue-500" />
                             <div>
                               <p className="text-sm font-medium">Prediksi Suhu</p>
                               <p className="text-2xl font-bold text-orange-600">
-                                {day.predicted_temp?.toFixed(1)}°C
+                                {predTemp}°C
                               </p>
                               <p className="text-xs text-muted-foreground mt-1">
-                                Rentang: {day.lower_bound?.toFixed(1)} - {day.upper_bound?.toFixed(1)}°C
+                                Rentang: {lowerBound} - {upperBound}°C
                               </p>
                             </div>
                           </CardContent>
@@ -336,48 +407,51 @@ export function WeatherPrediction() {
                     })}
                   </div>
 
-                  {/* Grafik */}
-                  <Card className="mb-6">
-                    <CardHeader>
-                      <CardTitle className="text-lg">Grafik Prediksi Suhu</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <ResponsiveContainer width="100%" height={300}>
-                        <LineChart
-                          data={backendPredictions.map((pred: any) => ({
-                            date: new Date(pred.date).toLocaleDateString("id-ID", {
-                              day: "numeric",
-                              month: "short",
-                            }),
-                            suhu: pred.predicted_temp,
-                          }))}
-                        >
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="date" />
-                          <YAxis />
-                          <Tooltip />
-                          <Line
-                            type="monotone"
-                            dataKey="suhu"
-                            stroke="#f59e0b"
-                            strokeWidth={3}
-                            dot={{ fill: "#f59e0b", r: 4 }}
-                          />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </CardContent>
-                  </Card>
-
-                  {/* Tombol tambahan */}
-                  <div className="flex flex-wrap gap-3">
-                    <Button variant="outline">Simpan Hasil Prediksi</Button>
-                    <Button variant="outline">Analisis Lanjutan</Button>
-                    <Button variant="outline">Unduh Laporan</Button>
-                  </div>
+                  {/* Grafik Prediksi */}
+                  <ResponsiveContainer width="100%" height={300}>
+                    <LineChart
+                      data={backendPredictions.map((pred, idx) => {
+                        let date: Date;
+                        try {
+                          date = new Date(pred.date);
+                          if (isNaN(date.getTime())) {
+                            date = new Date(pred.date + 'T00:00:00');
+                          }
+                          if (isNaN(date.getTime())) {
+                            date = new Date();
+                            date.setDate(date.getDate() + idx);
+                          }
+                        } catch (e) {
+                          date = new Date();
+                          date.setDate(date.getDate() + idx);
+                        }
+                        
+                        return {
+                          date: date.toLocaleDateString("id-ID", {
+                            day: "numeric",
+                            month: "short",
+                          }),
+                          suhu: pred.predicted_temp || 0,
+                        };
+                      })}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="date" />
+                      <YAxis />
+                      <Tooltip />
+                      <Line
+                        type="monotone"
+                        dataKey="suhu"
+                        stroke="#f59e0b"
+                        strokeWidth={3}
+                        dot={{ fill: "#f59e0b", r: 4 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
                 </>
               ) : (
                 <div className="text-center text-muted-foreground py-8">
-                  Belum ada hasil prediksi. Klik tombol di atas untuk memulai.
+                  Belum ada hasil prediksi. Klik tombol di atas.
                 </div>
               )}
             </CardContent>

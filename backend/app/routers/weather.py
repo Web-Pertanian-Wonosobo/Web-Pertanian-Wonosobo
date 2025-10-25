@@ -20,8 +20,22 @@ def get_predictions(days: int = 7, location: str = None, db: Session = Depends(g
             preds = predict_weather(db, days_ahead=days, location=location)
         else:
             preds = predict_weather(db, days_ahead=days)
-        return {"status": "success", "predictions": preds}
+        
+        # Konversi SQLAlchemy objects ke dictionary
+        predictions_data = []
+        for pred in preds:
+            predictions_data.append({
+                "date": pred.date.isoformat() if hasattr(pred.date, 'isoformat') else str(pred.date),
+                "predicted_temp": float(pred.predicted_temp) if pred.predicted_temp is not None else 0.0,
+                "lower_bound": float(pred.lower_bound) if pred.lower_bound is not None else 0.0,
+                "upper_bound": float(pred.upper_bound) if pred.upper_bound is not None else 0.0,
+                "source": pred.source or "Unknown"
+            })
+        
+        return {"status": "success", "predictions": predictions_data}
     except Exception as e:
+        logging.error(f"Error in get_predictions: {e}")
+        traceback.print_exc()
         return {"status": "error", "message": str(e)}
 
 

@@ -1,27 +1,18 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { AdminNavigation } from '../components/AdminNavigation';
 import { PageRouter } from '../components/PageRouter';
 import { LoginRegisterWithRole } from '../components/LoginRegisterWithRole';
-import { LandingPage } from '../components/LandingPage';
 import { PublicNavigation } from '../components/PublicNavigation';
 
 export default function App() {
+  console.log('App component rendering...');
   const [appMode, setAppMode] = useState<'landing' | 'public' | 'admin'>('public');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [userRole, setUserRole] = useState<'admin'>('admin');
 
-  const handleLoginClick = () => {
-    setCurrentPage('admin-login');
-    setAppMode('public');
-  };
-
-  const handleGoToPublicApp = () => {
-    setAppMode('public');
-    setCurrentPage('dashboard');
-  };
-
   const handleLogin = (role: 'admin' | 'farmer') => {
+    console.log('Login dengan role:', role);
     setIsLoggedIn(true);
     setUserRole('admin');
     setCurrentPage('admin-dashboard');
@@ -51,18 +42,8 @@ export default function App() {
     setIsLoggedIn(false);
     setUserRole('admin');
     setCurrentPage('dashboard');
-    setAppMode('public'); // Tetap di public app, tidak kembali ke landing
+    setAppMode('public');
   };
-
-  // Tampilkan landing page jika mode landing
-  // if (appMode === 'landing') {
-  //   return (
-  //     <LandingPage 
-  //       onLoginClick={handleLoginClick} 
-  //       onGoToApp={handleGoToPublicApp}
-  //     />
-  //   );
-  // }
 
   // Tampilkan halaman login admin
   if (!isLoggedIn && currentPage === 'admin-login') {
