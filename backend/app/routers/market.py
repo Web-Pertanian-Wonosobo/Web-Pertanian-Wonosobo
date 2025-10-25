@@ -154,3 +154,51 @@ def add_market_price(price_data: MarketPriceCreate, db: Session = Depends(get_db
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Gagal menyimpan data: {e}")
+
+@router.put("/update/{price_id}")
+def update_market_price(
+    price_id: int,
+    price_data: MarketPriceCreate,
+    db: Session = Depends(get_db)
+):
+    """
+    Update data harga pasar berdasarkan ID.
+    """
+    try:
+        existing = db.query(MarketPrice).filter(MarketPrice.price_id == price_id).first()
+        if not existing:
+            raise HTTPException(status_code=404, detail="Data tidak ditemukan")
+        
+        existing.commodity_name = price_data.commodity_name
+        existing.market_location = price_data.market_location
+        existing.unit = price_data.unit
+        existing.price = price_data.price
+        existing.date = price_data.date or existing.date
+        
+        db.commit()
+        db.refresh(existing)
+        return {"message": "Data berhasil diupdate", "data": existing.price_id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Gagal update data: {e}")
+
+@router.delete("/delete/{price_id}")
+def delete_market_price(price_id: int, db: Session = Depends(get_db)):
+    """
+    Hapus data harga pasar berdasarkan ID.
+    """
+    try:
+        existing = db.query(MarketPrice).filter(MarketPrice.price_id == price_id).first()
+        if not existing:
+            raise HTTPException(status_code=404, detail="Data tidak ditemukan")
+        
+        db.delete(existing)
+        db.commit()
+        return {"message": "Data berhasil dihapus"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Gagal hapus data: {e}")

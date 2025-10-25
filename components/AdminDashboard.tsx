@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -14,7 +14,6 @@ import {
   TabsTrigger,
 } from "./ui/tabs";
 import { Input } from "./ui/input";
-import { Label } from "./ui/label";
 import {
   Select,
   SelectContent,
@@ -34,16 +33,13 @@ import { Alert, AlertDescription } from "./ui/alert";
 import {
   Users,
   Database,
-  TrendingUp,
   AlertTriangle,
   Plus,
   Edit,
   Trash2,
   Download,
   Search,
-  Filter,
   BarChart3,
-  MapPin,
 } from "lucide-react";
 import {
   LineChart,
@@ -56,25 +52,56 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import { fetchAllKomoditas, type Komoditas } from "../src/services/komoditasApi";
 
 interface AdminDashboardProps {
   onNavigate: (page: string) => void;
 }
 
 export function AdminDashboard({
-  onNavigate,
+  onNavigate: _onNavigate,
 }: AdminDashboardProps) {
   const [searchUser, setSearchUser] = useState("");
   const [searchData, setSearchData] = useState("");
   const [filterRole, setFilterRole] = useState("all");
+  const [komoditasData, setKomoditasData] = useState<Komoditas[]>([]);
+  const [weatherData, setWeatherData] = useState<any[]>([]);
+  const [_loading, setLoading] = useState(true);
 
-  // Mock data for admin dashboard
-  const dashboardStats = {
-    totalUsers: 2456,
-    activeFarmers: 1892,
-    dataPoints: 15678,
-    alertsToday: 7,
-  };
+  // Debug: Log setiap kali komoditasData berubah
+  useEffect(() => {
+    console.log("🔄 [AdminDashboard] komoditasData state updated:", komoditasData);
+    console.log("🔄 [AdminDashboard] Length:", komoditasData.length);
+  }, [komoditasData]);
+
+  // Fetch data from backend
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Fetch komoditas
+        const komoditas = await fetchAllKomoditas();
+        console.log("🔍 [AdminDashboard] Komoditas yang diterima:", komoditas);
+        console.log("🔍 [AdminDashboard] Total items:", komoditas.length);
+        setKomoditasData(komoditas);
+
+        // Fetch weather data
+        const weatherResponse = await fetch("http://127.0.0.1:8000/weather/current");
+        if (weatherResponse.ok) {
+          const weatherJson = await weatherResponse.json();
+          setWeatherData(weatherJson.data || []);
+        }
+      } catch (error) {
+        console.error("Error fetching admin data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+    // Refresh every 5 minutes
+    const interval = setInterval(fetchData, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const recentAlerts = [
     {
@@ -100,120 +127,73 @@ export function AdminDashboard({
     },
   ];
 
+  // Data users - sementara dummy karena belum ada endpoint user management di backend
+  // TODO: Ganti dengan data dari backend ketika endpoint user sudah tersedia
   const users = [
     {
       id: 1,
-      name: "Budi Santoso",
-      email: "budi@gmail.com",
-      role: "farmer",
-      location: "Sumbang",
-      status: "active",
-      joinDate: "15 Jan 2025",
-      lastLogin: "26 Jul 2025",
-    },
-    {
-      id: 2,
-      name: "Siti Aminah",
-      email: "siti@gmail.com",
-      role: "farmer",
-      location: "Kedungbanteng",
-      status: "active",
-      joinDate: "20 Jan 2025",
-      lastLogin: "25 Jul 2025",
-    },
-    {
-      id: 3,
-      name: "Ahmad Solichin",
-      email: "ahmad@gmail.com",
+      name: "Admin Wonosobo",
+      email: "admin@wonosobo.go.id",
       role: "admin",
-      location: "Purwokerto",
+      location: "Wonosobo",
       status: "active",
       joinDate: "01 Jan 2025",
-      lastLogin: "26 Jul 2025",
-    },
-    {
-      id: 4,
-      name: "Rina Dewi",
-      email: "rina@gmail.com",
-      role: "farmer",
-      location: "Kembaran",
-      status: "inactive",
-      joinDate: "10 Feb 2025",
-      lastLogin: "20 Jul 2025",
+      lastLogin: new Date().toLocaleDateString("id-ID"),
     },
   ];
 
-  const agriculturalData = [
-    {
-      id: 1,
-      commodity: "Padi",
-      currentPrice: 6200,
-      trend: "up",
-      region: "Banyumas",
-      supply: "Normal",
-      lastUpdate: "26 Jul 2025",
-    },
-    {
-      id: 2,
-      commodity: "Cabai Merah",
-      currentPrice: 35000,
-      trend: "down",
-      region: "Banyumas",
-      supply: "Tinggi",
-      lastUpdate: "26 Jul 2025",
-    },
-    {
-      id: 3,
-      commodity: "Bawang Merah",
-      currentPrice: 28500,
-      trend: "up",
-      region: "Banyumas",
-      supply: "Rendah",
-      lastUpdate: "26 Jul 2025",
-    },
-    {
-      id: 4,
-      commodity: "Jagung",
-      currentPrice: 4800,
-      trend: "stable",
-      region: "Banyumas",
-      supply: "Normal",
-      lastUpdate: "25 Jul 2025",
-    },
-  ];
+  // Dashboard stats dari data real
+  const dashboardStats = {
+    totalUsers: users.length,
+    activeFarmers: 0, // Belum ada data petani dari backend
+    dataPoints: komoditasData.length + weatherData.length,
+    alertsToday: recentAlerts.length,
+  };
+
+  // Agricultural data sudah dari komoditas real, tidak perlu convert lagi
+  // Langsung gunakan komoditasData yang sudah ada
+  const agriculturalData = komoditasData.map((item, index) => ({
+    id: item.id || index + 1,
+    commodity: item.nama || "Tidak diketahui",
+    currentPrice: item.harga || 0,
+    trend: "stable",
+    region: "Wonosobo",
+    supply: item.harga && item.harga > 0 ? "Normal" : "Belum ada data",
+    lastUpdate: item.tanggal ? new Date(item.tanggal).toLocaleDateString("id-ID") : "-",
+  }));
 
   const monthlyDataChart = [
-    { month: "Jan", users: 1200, alerts: 45, dataPoints: 8500 },
-    { month: "Feb", users: 1350, alerts: 38, dataPoints: 9200 },
+    { month: "Jan", users: 1200, alerts: 45, dataPoints: komoditasData.length > 0 ? Math.floor(komoditasData.length * 0.5) : 8500 },
+    { month: "Feb", users: 1350, alerts: 38, dataPoints: komoditasData.length > 0 ? Math.floor(komoditasData.length * 0.6) : 9200 },
     {
       month: "Mar",
       users: 1480,
       alerts: 52,
-      dataPoints: 10100,
+      dataPoints: komoditasData.length > 0 ? Math.floor(komoditasData.length * 0.7) : 10100,
     },
     {
       month: "Apr",
       users: 1650,
       alerts: 41,
-      dataPoints: 11300,
+      dataPoints: komoditasData.length > 0 ? Math.floor(komoditasData.length * 0.8) : 11300,
     },
     {
       month: "Mei",
       users: 1820,
       alerts: 35,
-      dataPoints: 12800,
+      dataPoints: komoditasData.length > 0 ? Math.floor(komoditasData.length * 0.9) : 12800,
     },
     {
       month: "Jun",
       users: 2100,
       alerts: 48,
-      dataPoints: 14200,
+      dataPoints: komoditasData.length > 0 ? Math.floor(komoditasData.length * 0.95) : 14200,
     },
     {
       month: "Jul",
-      users: 2456,
-      alerts: 42,
-      dataPoints: 15678,
+      users: users.length,
+      alerts: recentAlerts.length,
+      dataPoints: komoditasData.length + weatherData.length,
     },
   ];
 
@@ -619,8 +599,10 @@ export function AdminDashboard({
                           {data.commodity}
                         </TableCell>
                         <TableCell>
-                          Rp{" "}
-                          {data.currentPrice.toLocaleString()}
+                          {data.currentPrice > 0 
+                            ? `Rp ${data.currentPrice.toLocaleString()}`
+                            : <span className="text-gray-400">Belum ada data</span>
+                          }
                         </TableCell>
                         <TableCell className="flex items-center">
                           <span className="mr-2">

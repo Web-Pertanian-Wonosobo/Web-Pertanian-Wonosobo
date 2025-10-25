@@ -23,11 +23,23 @@ def fetch_realtime_komoditas() -> List[Dict]:
 def fetch_realtime_produk_komoditas() -> List[Dict]:
     """
     Mengambil data produk komoditas real-time dari API.
+    Handle nested structure: {data: {data: [...]}}
     """
     try:
         response = requests.get(f"{BASE_URL}/produk-komoditas", timeout=10)
         response.raise_for_status()
-        return response.json()
+        data = response.json()
+        
+        # Extract nested data structure
+        if isinstance(data, dict) and "data" in data:
+            if isinstance(data["data"], dict) and "data" in data["data"]:
+                return data["data"]["data"]
+            elif isinstance(data["data"], list):
+                return data["data"]
+        elif isinstance(data, list):
+            return data
+        
+        return []
     except Exception as e:
         print(f"❌ Error fetching produk-komoditas: {e}")
         return []
@@ -52,47 +64,41 @@ def get_realtime_market_prices() -> Dict:
     try:
         all_prices = []
         
-        # Fetch dari produk-komoditas (endpoint utama)
+        # Fetch dari produk-komoditas (endpoint utama dengan harga)
         produk_komoditas = fetch_realtime_produk_komoditas()
+        print(f"📦 Fetched {len(produk_komoditas)} items from produk-komoditas")
+        
         for item in produk_komoditas:
+            # Extract nama dari nested object produk.name
+            nama = "Tidak diketahui"
+            if isinstance(item.get("produk"), dict) and item["produk"].get("name"):
+                nama = item["produk"]["name"]
+            elif item.get("name"):
+                nama = item["name"]
+            elif item.get("nama"):
+                nama = item["nama"]
+            
+            # Extract harga dari harga_pasar
+            harga = parse_price(item.get("harga_pasar") or item.get("harga") or 0)
+            
+            # Extract kategori dari nested object
+            kategori = "-"
+            if isinstance(item.get("kategori_komoditas"), dict):
+                kategori = item["kategori_komoditas"].get("name", "-")
+            elif item.get("kategori"):
+                kategori = item["kategori"]
+            
             price_data = {
-                "commodity_name": item.get("nama") or item.get("komoditas") or item.get("nama_komoditas") or "Tidak diketahui",
-                "category": item.get("kategori") or item.get("nama_kategori") or "-",
-                "unit": item.get("satuan") or "kg",
-                "price": parse_price(item.get("harga") or item.get("harga_komoditas") or 0),
-                "market_location": item.get("pasar") or item.get("lokasi_pasar") or "Wonosobo",
-                "date": parse_date(item.get("tanggal") or item.get("updated_at")),
+                "commodity_name": nama,
+                "category": kategori,
+                "unit": item.get("unit") or item.get("satuan") or "kg",
+                "price": harga,
+                "market_location": "Wonosobo",  # Default
+                "date": parse_date(item.get("tgl") or item.get("tanggal") or item.get("updated_at")),
                 "source": "produk-komoditas"
             }
             all_prices.append(price_data)
-        
-        # Fetch dari komoditas
-        komoditas = fetch_realtime_komoditas()
-        for item in komoditas:
-            price_data = {
-                "commodity_name": item.get("nama") or item.get("nama_komoditas") or "Tidak diketahui",
-                "category": item.get("kategori") or item.get("nama_kategori") or "-",
-                "unit": item.get("satuan") or "kg",
-                "price": parse_price(item.get("harga") or item.get("harga_eceran") or 0),
-                "market_location": item.get("lokasi") or item.get("pasar") or "Wonosobo",
-                "date": parse_date(item.get("tanggal") or item.get("updated_at")),
-                "source": "komoditas"
-            }
-            all_prices.append(price_data)
-        
-        # Fetch dari produk
-        produk = fetch_realtime_produk()
-        for item in produk:
-            price_data = {
-                "commodity_name": item.get("nama") or item.get("nama_produk") or "Tidak diketahui",
-                "category": item.get("kategori") or "-",
-                "unit": item.get("satuan") or "kg",
-                "price": parse_price(item.get("harga") or item.get("harga_jual") or 0),
-                "market_location": item.get("lokasi") or "Wonosobo",
-                "date": parse_date(item.get("tanggal") or item.get("updated_at")),
-                "source": "produk"
-            }
-            all_prices.append(price_data)
+            print(f"  ✓ Added: {nama} - Rp {harga}")
         
         return {
             "success": True,
@@ -169,7 +175,7 @@ def fetch_and_save_market_data():
                 continue
 
             new_price = MarketPrice(
-                user_id=1,  # user dummy sementara
+                user_id=None,  # Biarkan NULL untuk data dari API
                 commodity_name=price_data["commodity_name"],
                 market_location=price_data["market_location"],
                 unit=price_data["unit"],
