@@ -3,7 +3,7 @@ from datetime import date
 from typing import Optional
 
 class MarketPriceCreate(BaseModel):
-    user_id: int = 1
+    user_id: Optional[int] = None  # Bisa null untuk data dari API atau manual
     commodity_name: str
     market_location: str
     unit: str

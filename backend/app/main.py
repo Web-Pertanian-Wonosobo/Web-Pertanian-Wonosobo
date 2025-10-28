@@ -22,17 +22,25 @@ app.include_router(weather.router)  # Router already has /weather prefix
 app.include_router(market.router)  # Router already has /market prefix
 # app.include_router(predict.router)  # Temporarily disabled 
 
-# Startup event - Start scheduler (optional, uncomment to enable auto-sync)
-# @app.on_event("startup")
-# def startup_event():
-#     from app.scheduler import start_scheduler
-#     start_scheduler()
+# Startup event - Run sync once, tanpa scheduler continuous (sementara disabled)
+@app.on_event("startup")
+def startup_event():
+    # Manual sync once saat startup
+    from app.services.market_sync import fetch_and_save_market_data
+    try:
+        result = fetch_and_save_market_data()
+        print(f"✅ Initial sync completed: {result}")
+    except Exception as e:
+        print(f"⚠️ Initial sync failed: {e}")
+    
+    # TODO: Fix scheduler crash issue, untuk sekarang pakai manual sync dulu
+    # from app.scheduler import start_scheduler
+    # start_scheduler()
 
 # Shutdown event
-# @app.on_event("shutdown")
-# def shutdown_event():
-#     from app.scheduler import stop_scheduler
-#     stop_scheduler()
+@app.on_event("shutdown")
+def shutdown_event():
+    print("🛑 Backend stopped")
 
 @app.get("/")
 def root():

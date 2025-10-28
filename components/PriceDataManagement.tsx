@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -18,60 +18,10 @@ import {
   DollarSign
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { fetchAllKomoditas, addKomoditas, updateKomoditas, deleteKomoditas, type Komoditas } from '../src/services/komoditasApi';
 
-// Mock data harga komoditas
-const initialPriceData = [
-  {
-    id: 1,
-    commodity: 'Kentang',
-    location: 'Wonosobo Kota',
-    currentPrice: 8500,
-    previousPrice: 8000,
-    unit: 'kg',
-    date: '2025-01-20',
-    trend: 'up' as const
-  },
-  {
-    id: 2,
-    commodity: 'Wortel',
-    location: 'Kertek',
-    currentPrice: 12000,
-    previousPrice: 12500,
-    unit: 'kg',
-    date: '2025-01-20',
-    trend: 'down' as const
-  },
-  {
-    id: 3,
-    commodity: 'Kubis',
-    location: 'Garung',
-    currentPrice: 6000,
-    previousPrice: 6000,
-    unit: 'kg',
-    date: '2025-01-20',
-    trend: 'stable' as const
-  },
-  {
-    id: 4,
-    commodity: 'Kopi',
-    location: 'Leksono',
-    currentPrice: 28000,
-    previousPrice: 25000,
-    unit: 'kg',
-    date: '2025-01-20',
-    trend: 'up' as const
-  },
-  {
-    id: 5,
-    commodity: 'Strawberry',
-    location: 'Kalibawang',
-    currentPrice: 25000,
-    previousPrice: 24000,
-    unit: 'kg',
-    date: '2025-01-20',
-    trend: 'up' as const
-  }
-];
+// Data akan diambil dari API, bukan hardcoded
+const initialPriceData: any[] = [];
 
 const wonosoboLocations = [
   'Wonosobo Kota', 'Kertek', 'Garung', 'Leksono', 'Sukoharjo', 
@@ -86,8 +36,9 @@ const commonCommodities = [
 
 export function PriceDataManagement() {
   const [priceData, setPriceData] = useState(initialPriceData);
+  const [loading, setLoading] = useState(true);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState<typeof initialPriceData[0] | null>(null);
+  const [editingItem, setEditingItem] = useState<any>(null);
   const [formData, setFormData] = useState({
     commodity: '',
     location: '',
@@ -95,6 +46,42 @@ export function PriceDataManagement() {
     unit: 'kg',
     date: new Date().toISOString().split('T')[0]
   });
+
+  // Fetch data dari API saat component mount
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const komoditas = await fetchAllKomoditas();
+        console.log("🔍 [PriceDataManagement] Data dari API:", komoditas);
+        
+        // Convert ke format yang digunakan PriceDataManagement
+        const converted = komoditas.map((item, index) => ({
+          id: item.id || index + 1,
+          commodity: item.nama || 'Tidak diketahui',
+          location: 'Wonosobo Kota', // Default location karena API tidak menyediakan
+          currentPrice: item.harga || 0,
+          previousPrice: item.harga || 0, // Tidak ada data previous, gunakan current
+          unit: item.satuan || 'kg',
+          date: item.tanggal || new Date().toISOString().split('T')[0],
+          trend: 'stable' as const // Default stable karena tidak ada data perubahan
+        }));
+        
+        setPriceData(converted);
+        console.log("✅ [PriceDataManagement] Data converted:", converted);
+      } catch (error) {
+        console.error("Error fetching komoditas:", error);
+        setPriceData([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+    // Refresh tiap 10 menit
+    const interval = setInterval(fetchData, 10 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const resetForm = () => {
     setFormData({
@@ -107,7 +94,7 @@ export function PriceDataManagement() {
     setEditingItem(null);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!formData.commodity || !formData.location || !formData.currentPrice) {
       toast.error('Mohon lengkapi semua field yang wajib diisi');
       return;
@@ -119,41 +106,72 @@ export function PriceDataManagement() {
       return;
     }
 
-    if (editingItem) {
-      // Update existing item
-      const previousPrice = editingItem.currentPrice;
-      const trend = price > previousPrice ? 'up' : price < previousPrice ? 'down' : 'stable';
-      
-      setPriceData(prev => prev.map(item => 
-        item.id === editingItem.id 
-          ? {
-              ...item,
-              ...formData,
-              currentPrice: price,
-              previousPrice: previousPrice,
-              trend: trend as 'up' | 'down' | 'stable'
-            }
-          : item
-      ));
-      toast.success('Data harga berhasil diperbarui');
-    } else {
-      // Add new item
-      const newItem = {
-        id: Math.max(...priceData.map(item => item.id)) + 1,
-        ...formData,
-        currentPrice: price,
-        previousPrice: price,
-        trend: 'stable' as const
-      };
-      setPriceData(prev => [...prev, newItem]);
-      toast.success('Data harga berhasil ditambahkan');
-    }
+    try {
+      if (editingItem) {
+        // Update existing item di backend
+        const result = await updateKomoditas(editingItem.id, {
+          commodity_name: formData.commodity,
+          market_location: formData.location,
+          unit: formData.unit,
+          price: price,
+          date: formData.date,
+        });
 
-    resetForm();
-    setIsAddDialogOpen(false);
+        if (result.success) {
+          toast.success('Data harga berhasil diperbarui');
+          // Refresh data dari backend
+          const refreshed = await fetchAllKomoditas();
+          setPriceData(refreshed.map((item, index) => ({
+            id: item.id || index + 1,
+            commodity: item.nama || 'Tidak diketahui',
+            location: 'Wonosobo Kota',
+            currentPrice: item.harga || 0,
+            previousPrice: item.harga || 0,
+            unit: item.satuan || 'kg',
+            date: item.tanggal || new Date().toISOString().split('T')[0],
+            trend: 'stable' as const
+          })));
+        } else {
+          toast.error(result.message);
+        }
+      } else {
+        // Add new item ke backend
+        const result = await addKomoditas({
+          commodity_name: formData.commodity,
+          market_location: formData.location,
+          unit: formData.unit,
+          price: price,
+          date: formData.date,
+        });
+
+        if (result.success) {
+          toast.success('Data harga berhasil ditambahkan');
+          // Refresh data dari backend
+          const refreshed = await fetchAllKomoditas();
+          setPriceData(refreshed.map((item, index) => ({
+            id: item.id || index + 1,
+            commodity: item.nama || 'Tidak diketahui',
+            location: 'Wonosobo Kota',
+            currentPrice: item.harga || 0,
+            previousPrice: item.harga || 0,
+            unit: item.satuan || 'kg',
+            date: item.tanggal || new Date().toISOString().split('T')[0],
+            trend: 'stable' as const
+          })));
+        } else {
+          toast.error(result.message);
+        }
+      }
+
+      resetForm();
+      setIsAddDialogOpen(false);
+    } catch (error) {
+      console.error('Error submitting data:', error);
+      toast.error('Gagal menyimpan data ke backend');
+    }
   };
 
-  const handleEdit = (item: typeof initialPriceData[0]) => {
+  const handleEdit = (item: any) => {
     setEditingItem(item);
     setFormData({
       commodity: item.commodity,
@@ -165,9 +183,31 @@ export function PriceDataManagement() {
     setIsAddDialogOpen(true);
   };
 
-  const handleDelete = (id: number) => {
-    setPriceData(prev => prev.filter(item => item.id !== id));
-    toast.success('Data harga berhasil dihapus');
+  const handleDelete = async (id: number) => {
+    try {
+      const result = await deleteKomoditas(id);
+      
+      if (result.success) {
+        toast.success('Data harga berhasil dihapus');
+        // Refresh data dari backend
+        const refreshed = await fetchAllKomoditas();
+        setPriceData(refreshed.map((item, index) => ({
+          id: item.id || index + 1,
+          commodity: item.nama || 'Tidak diketahui',
+          location: 'Wonosobo Kota',
+          currentPrice: item.harga || 0,
+          previousPrice: item.harga || 0,
+          unit: item.satuan || 'kg',
+          date: item.tanggal || new Date().toISOString().split('T')[0],
+          trend: 'stable' as const
+        })));
+      } else {
+        toast.error(result.message);
+      }
+    } catch (error) {
+      console.error('Error deleting data:', error);
+      toast.error('Gagal menghapus data dari backend');
+    }
   };
 
   const getTrendIcon = (trend: 'up' | 'down' | 'stable') => {
@@ -367,50 +407,67 @@ export function PriceDataManagement() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {priceData.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell className="font-medium">{item.commodity}</TableCell>
-                    <TableCell>{item.location}</TableCell>
-                    <TableCell>
-                      <div className="font-medium">
-                        Rp {item.currentPrice.toLocaleString('id-ID')}/<span className="text-gray-500">{item.unit}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className={getTrendColor(item.trend)}>
-                        <div className="flex items-center space-x-1">
-                          {getTrendIcon(item.trend)}
-                          <span className="capitalize">{item.trend}</span>
-                        </div>
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center space-x-1">
-                        <Calendar className="w-4 h-4 text-gray-400" />
-                        <span>{new Date(item.date).toLocaleDateString('id-ID')}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end space-x-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleEdit(item)}
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleDelete(item.id)}
-                          className="text-red-600 hover:text-red-700"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                      Memuat data...
                     </TableCell>
                   </TableRow>
-                ))}
+                ) : priceData.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                      Belum ada data komoditas
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  priceData.map((item) => (
+                    <TableRow key={item.id}>
+                      <TableCell className="font-medium">{item.commodity}</TableCell>
+                      <TableCell>{item.location}</TableCell>
+                      <TableCell>
+                        <div className="font-medium">
+                          {item.currentPrice > 0 
+                            ? `Rp ${item.currentPrice.toLocaleString('id-ID')}/${item.unit}`
+                            : <span className="text-gray-400">Belum ada data</span>
+                          }
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={getTrendColor(item.trend)}>
+                          <div className="flex items-center space-x-1">
+                            {getTrendIcon(item.trend)}
+                            <span className="capitalize">{item.trend}</span>
+                          </div>
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center space-x-1">
+                          <Calendar className="w-4 h-4 text-gray-400" />
+                          <span>{new Date(item.date).toLocaleDateString('id-ID')}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end space-x-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEdit(item)}
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDelete(item.id)}
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           </div>

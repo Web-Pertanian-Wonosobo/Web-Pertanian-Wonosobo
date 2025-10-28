@@ -26,6 +26,10 @@ export interface KomoditasResponse {
 }
 
 const API_BASE = "https://disdagkopukm.wonosobokab.go.id/api";
+const BACKEND_API = "http://127.0.0.1:8000/market";
+
+// Gunakan database backend (data sudah di-sync otomatis dari API)
+const USE_DATABASE = true;
 
 /**
  * Normalize komoditas data - map various field names to standard format
@@ -133,32 +137,59 @@ export const normalizeKomoditas = (item: any): Komoditas => {
 };
 
 /**
- * Fetch data komoditas dari API Disdagkopukm Wonosobo
- * Menggunakan endpoint produk-komoditas
+ * Normalize data dari database backend (format berbeda dari API)
+ */
+export const normalizeFromDatabase = (item: any): Komoditas => {
+  return {
+    id: item.price_id || item.id,
+    nama: item.commodity_name || "Tidak diketahui",
+    harga: item.price || 0,
+    satuan: item.unit || "kg",
+    tanggal: item.date || item.created_at,
+    perubahan: "0%", // Tidak ada data perubahan dari database
+    kategori: item.category || "Umum",
+  };
+};
+
+/**
+ * Fetch data komoditas dari database backend (sudah di-sync otomatis dari API)
  */
 export const fetchKomoditas = async (): Promise<Komoditas[]> => {
   try {
-    const response = await fetch(`${API_BASE}/produk-komoditas`);
+    // Ambil dari database backend (data sudah di-sync otomatis tiap 1 jam)
+    const endpoint = USE_DATABASE 
+      ? `${BACKEND_API}/list?limit=100`
+      : `${BACKEND_API}/realtime/produk-komoditas`;
+    
+    console.log(`📡 Fetching komoditas from: ${endpoint}`);
+    const response = await fetch(endpoint);
     
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
     
     const data = await response.json();
-    console.log("📦 Raw produk-komoditas response:", data);
+    console.log("📦 Raw komoditas response:", data);
     
     // Cek struktur response dan extract data
     let komoditasData: any[] = [];
     
     if (Array.isArray(data)) {
       komoditasData = data;
-    } else if (data.data && Array.isArray(data.data)) {
-      komoditasData = data.data;
-    } else if (data.success && data.data) {
-      komoditasData = Array.isArray(data.data) ? data.data : [];
+    } else if (data.data) {
+      if (Array.isArray(data.data)) {
+        komoditasData = data.data;
+        console.log("✓ Database response: extracted from data array");
+      } else if (data.data.data && Array.isArray(data.data.data)) {
+        komoditasData = data.data.data;
+        console.log("✓ Nested response: extracted from data.data.data");
+      } else {
+        komoditasData = [];
+        console.log("⚠️ Unexpected data structure");
+      }
     }
     
-    // Log raw data SEBELUM normalisasi dengan FULL DETAIL
+    // Log raw data SEBELUM normalisasi
     console.log("📋 FULL RAW JSON (sebelum normalisasi):");
     console.log(JSON.stringify(komoditasData, null, 2));
     
@@ -166,13 +197,14 @@ export const fetchKomoditas = async (): Promise<Komoditas[]> => {
       console.log("\n🔍 FIRST ITEM detail:");
       console.log("Full object:", komoditasData[0]);
       console.log("All keys:", Object.keys(komoditasData[0]));
-      console.log("All entries:", Object.entries(komoditasData[0]));
     }
     
-    // Normalize data
-    const normalized = komoditasData.map(normalizeKomoditas);
+    // Normalize data - untuk data dari database format berbeda
+    const normalized = USE_DATABASE 
+      ? komoditasData.map(normalizeFromDatabase)
+      : komoditasData.map(normalizeKomoditas);
     
-    console.log(`\n✅ Total ${normalized.length} komoditas dari produk-komoditas`);
+    console.log(`\n✅ Total ${normalized.length} komoditas dari ${USE_DATABASE ? 'database (auto-synced)' : 'API langsung'}`);
     console.log("📦 Sample normalized data:", normalized.slice(0, 2));
     
     return normalized;
@@ -188,7 +220,11 @@ export const fetchKomoditas = async (): Promise<Komoditas[]> => {
  */
 export const fetchProdukById = async (id: number): Promise<Komoditas[]> => {
   try {
-    const response = await fetch(`${API_BASE}/produk/${id}`);
+    // Backend tidak punya endpoint /produk/{id}, gunakan API langsung
+    const endpoint = `${API_BASE}/produk/${id}`;
+    
+    console.log(`📡 Fetching produk/${id} from direct API (backend tidak support endpoint ini)`);
+    const response = await fetch(endpoint);
     
     if (!response.ok) {
       console.warn(`HTTP error for produk/${id}! status: ${response.status}`);
@@ -233,42 +269,20 @@ export const fetchProdukById = async (id: number): Promise<Komoditas[]> => {
 };
 
 /**
- * Fetch semua data komoditas dari berbagai endpoint
- * Menggabungkan data dari produk-komoditas dan produk/{id}
+ * Fetch semua data komoditas dari database backend
+ * Data sudah di-sync otomatis dari API tiap 1 jam
  */
 export const fetchAllKomoditas = async (): Promise<Komoditas[]> => {
   try {
-    console.log("🔄 Mengambil data dari semua endpoint...");
+    console.log("🔄 Mengambil data dari database backend (auto-synced)...");
     
-    // 1. Fetch data dengan HARGA dari /produk-komoditas
-    const komoditasWithPrice = await fetchKomoditas();
-    console.log(`📦 Data DENGAN HARGA dari produk-komoditas: ${komoditasWithPrice.length} items`);
+    // Langsung ambil dari database (sudah di-sync otomatis)
+    const komoditasData = await fetchKomoditas();
     
-    // 2. Fetch daftar produk master (tanpa harga)
-    console.log("📋 Fetching master data produk...");
-    const cabaiData = await fetchProdukById(1);
-    const kubisData = await fetchProdukById(2);
+    console.log(`\n✅ Total ${komoditasData.length} komoditas dari database`);
+    console.log("📦 Final data:", komoditasData);
     
-    // 3. Gabungkan tanpa duplikasi
-    const allData: Komoditas[] = [...komoditasWithPrice];
-    const existingNames = new Set(komoditasWithPrice.map(k => k.nama?.toLowerCase() || ''));
-    
-    // Tambahkan produk master yang belum ada
-    [...cabaiData, ...kubisData].forEach(item => {
-      const nameLower = (item.nama || '').toLowerCase();
-      if (nameLower && !existingNames.has(nameLower)) {
-        allData.push(item);
-        existingNames.add(nameLower);
-        console.log(`✓ Tambah produk master: ${item.nama} (ID: ${item.id}, Harga: ${item.harga || 'N/A'})`);
-      } else {
-        console.log(`⚠️ Skip duplikat: ${item.nama}`);
-      }
-    });
-    
-    console.log(`\n✅ Total ${allData.length} komoditas (gabungan)`);
-    console.log("📦 Final data:", allData);
-    
-    return allData;
+    return komoditasData;
   } catch (error) {
     console.error("Error fetching all komoditas:", error);
     return [];
@@ -302,4 +316,180 @@ export const searchKomoditas = (
   return komoditas.filter((item) =>
     item.nama?.toLowerCase().includes(lowerQuery)
   );
+};
+
+/**
+ * CRUD Operations - Tambah, Edit, Hapus data ke backend database
+ */
+
+interface AddKomoditasData {
+  commodity_name: string;
+  market_location: string;
+  unit: string;
+  price: number;
+  date?: string;
+}
+
+/**
+ * Tambah data komoditas baru ke database
+ */
+export const addKomoditas = async (data: AddKomoditasData): Promise<{ success: boolean; message: string; id?: number }> => {
+  try {
+    console.log('📤 Sending data to backend:', data);
+    
+    // Prepare payload - JANGAN kirim date, biar backend yang generate
+    const payload = {
+      commodity_name: data.commodity_name,
+      market_location: data.market_location,
+      unit: data.unit,
+      price: Number(data.price), // Pastikan number
+    };
+    
+    console.log('📦 Payload:', payload);
+    
+    const response = await fetch(`${BACKEND_API}/add`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    console.log('📥 Response status:', response.status);
+    
+    if (!response.ok) {
+      const error = await response.json();
+      console.error('❌ Backend error:', error);
+      
+      // Extract error message dari array detail jika ada
+      if (error.detail && Array.isArray(error.detail)) {
+        const errorMessages = error.detail.map((e: any) => `${e.loc.join('.')}: ${e.msg}`).join(', ');
+        throw new Error(errorMessages);
+      }
+      
+      throw new Error(error.detail || 'Gagal menambah data');
+    }
+
+    const result = await response.json();
+    console.log('✅ Data berhasil ditambahkan:', result);
+    
+    return {
+      success: true,
+      message: result.message || 'Data berhasil ditambahkan',
+      id: result.data,
+    };
+  } catch (error) {
+    console.error('❌ Error adding komoditas:', error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Gagal menambah data',
+    };
+  }
+};
+
+/**
+ * Update data komoditas di database
+ */
+export const updateKomoditas = async (
+  id: number,
+  data: AddKomoditasData
+): Promise<{ success: boolean; message: string }> => {
+  try {
+    console.log('📤 Updating data:', { id, data });
+    
+    const response = await fetch(`${BACKEND_API}/update/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        commodity_name: data.commodity_name,
+        market_location: data.market_location,
+        unit: data.unit,
+        price: data.price,
+        date: data.date || undefined,
+      }),
+    });
+
+    console.log('📥 Response status:', response.status);
+
+    if (!response.ok) {
+      const error = await response.json();
+      console.error('❌ Backend error:', error);
+      throw new Error(error.detail || 'Gagal mengupdate data');
+    }
+
+    const result = await response.json();
+    console.log('✅ Data berhasil diupdate:', result);
+    
+    return {
+      success: true,
+      message: result.message || 'Data berhasil diupdate',
+    };
+  } catch (error) {
+    console.error('❌ Error updating komoditas:', error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Gagal mengupdate data',
+    };
+  }
+};
+
+/**
+ * Hapus data komoditas dari database
+ */
+export const deleteKomoditas = async (id: number): Promise<{ success: boolean; message: string }> => {
+  try {
+    const response = await fetch(`${BACKEND_API}/delete/${id}`, {
+      method: 'DELETE',
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Gagal menghapus data');
+    }
+
+    const result = await response.json();
+    console.log('✅ Data berhasil dihapus:', result);
+    
+    return {
+      success: true,
+      message: result.message || 'Data berhasil dihapus',
+    };
+  } catch (error) {
+    console.error('❌ Error deleting komoditas:', error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Gagal menghapus data',
+    };
+  }
+};
+
+/**
+ * Manual sync data dari API ke database
+ */
+export const syncKomoditasFromAPI = async (): Promise<{ success: boolean; message: string }> => {
+  try {
+    const response = await fetch(`${BACKEND_API}/sync`, {
+      method: 'POST',
+    });
+
+    if (!response.ok) {
+      throw new Error('Gagal sync data dari API');
+    }
+
+    const result = await response.json();
+    console.log('✅ Sync berhasil:', result);
+    
+    return {
+      success: true,
+      message: result.message || 'Data berhasil di-sync dari API',
+    };
+  } catch (error) {
+    console.error('❌ Error syncing data:', error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Gagal sync data',
+    };
+  }
 };
