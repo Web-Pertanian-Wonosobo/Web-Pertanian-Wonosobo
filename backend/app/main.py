@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import weather, market
+from app.routers import weather, market, auth
 
 app = FastAPI(
     title="Web Petani Wonosobo API",
@@ -20,6 +20,7 @@ app.add_middleware(
 # Include routers
 app.include_router(weather.router)  # Router already has /weather prefix
 app.include_router(market.router)  # Router already has /market prefix
+app.include_router(auth.router)  # Router already has /auth prefix
 # app.include_router(predict.router)  # Temporarily disabled 
 
 # Startup event - Run sync once, tanpa scheduler continuous (sementara disabled)
@@ -48,6 +49,7 @@ def root():
         "message": "Backend siap jalan 🚀",
         "version": "1.0.0",
         "endpoints": {
+            "auth": "/auth",
             "weather": "/weather",
             "market": "/market",
             "predict": "/predict",
