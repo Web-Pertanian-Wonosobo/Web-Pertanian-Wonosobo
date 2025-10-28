@@ -8,8 +8,7 @@ import {
   Mountain,
   Menu,
   Home,
-  User,
-  Cloud
+  User
 } from 'lucide-react';
 
 interface PublicNavigationProps {
@@ -22,7 +21,6 @@ export function PublicNavigation({ currentPage, onPageChange, isLoggedIn }: Publ
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Home },
     { id: 'weather', label: 'Prediksi Cuaca', icon: CloudRain },
-    { id: 'bmkg-weather', label: 'Data BMKG', icon: Cloud },
     { id: 'price-prediction', label: 'Prediksi Harga', icon: TrendingUp },
     { id: 'slope-analysis', label: 'Analisis Lereng', icon: Mountain },
   ];
