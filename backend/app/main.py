@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.routers import weather, market
+from app.middleware.rbac_middleware import RBACMiddleware
 
 app = FastAPI(
     title="Web Petani Wonosobo API",
@@ -16,6 +17,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# RBAC Middleware
+app.add_middleware(RBACMiddleware)
 
 # Include routers
 app.include_router(weather.router)  # Router already has /weather prefix
