@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.routers import weather, market
 from app.middleware.rbac_middleware import RBACMiddleware
+from app.routers import admin
 
 app = FastAPI(
     title="Web Petani Wonosobo API",
@@ -24,7 +25,7 @@ app.add_middleware(RBACMiddleware)
 # Include routers
 app.include_router(weather.router)  # Router already has /weather prefix
 app.include_router(market.router)  # Router already has /market prefix
-# app.include_router(predict.router)  # Temporarily disabled 
+app.include_router(admin.router) 
 
 # Startup event - Start scheduler (optional, uncomment to enable auto-sync)
 # @app.on_event("startup")
