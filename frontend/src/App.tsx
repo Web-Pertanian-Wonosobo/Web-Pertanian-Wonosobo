@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { AdminNavigation } from '../componentstdkterpakai/AdminNavigation';
-import { PageRouter } from '../componentstdkterpakai/PageRouter';
-import { LoginRegister } from '../componentstdkterpakai/LoginRegister';
-import { PublicNavigation } from '../componentstdkterpakai/PublicNavigation';
+import { AdminNavigation } from '../components/AdminNavigation';
+import { PageRouter } from '../components/PageRouter';
+import { LoginRegister } from '../components/LoginRegister';
+import { PublicNavigation } from '../components/PublicNavigation';
 
 export default function App() {
   console.log('App component rendering...');

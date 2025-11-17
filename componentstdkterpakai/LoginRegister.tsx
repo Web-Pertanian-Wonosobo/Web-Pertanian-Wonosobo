@@ -6,43 +6,13 @@ import { Label } from "./ui/label";
 import { Eye, EyeOff, Mail, Lock, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
-// Auth API functions
-const BACKEND_API = "http://127.0.0.1:8000/auth";
-
-async function loginAdmin(credentials: { email: string; password: string }) {
-  try {
-    console.log("🔐 Attempting login for:", credentials.email);
-    
-    const response = await fetch(`${BACKEND_API}/login`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(credentials),
-    });
-
-    const data = await response.json();
-    console.log("📨 Backend response:", data);
-
-    if (!response.ok) {
-      console.error("❌ HTTP error:", response.status, data);
-      throw new Error(data.detail || data.message || "Login gagal");
-    }
-
-    if (data.success === true && data.user) {
-      localStorage.setItem("authUser", JSON.stringify(data.user));
-      localStorage.setItem("authRole", data.user.role);
-      console.log("✅ Login berhasil! User saved to localStorage:", data.user);
-    } else {
-      console.warn("⚠️ Login gagal:", data.message);
-    }
-
-    return data;
-  } catch (error: any) {
-    console.error("❌ Login API error:", error);
-    throw error;
-  }
-}
+// ✅ Dummy Admin (pengganti API BE)
+const DUMMY_ADMIN = {
+  email: "admin@example.com",
+  password: "admin123",
+  name: "Administrator",
+  role: "admin",
+};
 
 interface LoginRegisterProps {
   onLogin: (role: "guest" | "admin") => void;
@@ -55,8 +25,7 @@ export function LoginRegister({ onLogin }: LoginRegisterProps) {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Validasi input
+
     if (!loginData.email || !loginData.password) {
       toast.error("Email dan password harus diisi!");
       return;
@@ -68,52 +37,33 @@ export function LoginRegister({ onLogin }: LoginRegisterProps) {
       const email = loginData.email.trim().toLowerCase();
       const password = loginData.password;
 
-      console.log("========================================");
-      console.log("📤 LOGIN ATTEMPT");
+      console.log("🔐 LOGIN WITH DUMMY DATA");
       console.log("Email:", email);
       console.log("Password:", password);
-      console.log("========================================");
-      
-      // Call backend API
-      const response = await loginAdmin({ email, password });
 
-      console.log("========================================");
-      console.log("📥 BACKEND RESPONSE");
-      console.log("Full response:", JSON.stringify(response, null, 2));
-      console.log("response.success:", response.success);
-      console.log("response.success === true:", response.success === true);
-      console.log("response.user:", response.user);
-      console.log("========================================");
+      // ============================
+      // 🔥 LOGIN TANPA BACKEND
+      // ============================
+      if (
+        email === DUMMY_ADMIN.email &&
+        password === DUMMY_ADMIN.password
+      ) {
+        toast.success(`Selamat datang, ${DUMMY_ADMIN.name}! 🎉`);
 
-      // CEK RESPONSE - hanya redirect jika success === true DAN user exists
-      if (response.success === true && response.user) {
-        console.log("✅✅✅ KONDISI SUCCESS TERPENUHI - AKAN REDIRECT");
-        toast.success(`Selamat datang, ${response.user.name}! 🎉`);
-        
-        // Hanya admin yang bisa login
-        if (response.user.role === "admin") {
-          console.log("🔐 Redirecting to ADMIN dashboard");
-          onLogin("admin");
-        } else {
-          // Bukan admin, tolak
-          console.log("❌ User bukan admin, login ditolak");
-          toast.error("Hanya admin yang bisa login!");
-        }
+        // Simpan ke localStorage (opsional)
+        localStorage.setItem("authUser", JSON.stringify(DUMMY_ADMIN));
+        localStorage.setItem("authRole", "admin");
+
+        // Masuk dashboard
+        onLogin("admin");
       } else {
-        // Login GAGAL - success === false
-        console.log("❌❌❌ KONDISI SUCCESS TIDAK TERPENUHI - TIDAK REDIRECT");
-        console.log("Reason: success =", response.success, ", user =", response.user);
-        toast.error(response.message || "Email atau password salah! ❌");
-        // JANGAN panggil onLogin() - STAY DI LOGIN PAGE
+        toast.error("Email atau password salah!");
       }
     } catch (error: any) {
-      // Error dari network atau server crash
-      console.log("🔥🔥🔥 EXCEPTION CAUGHT");
-      console.error("Error:", error);
-      toast.error(error.message || "Gagal terhubung ke server! ⚠️");
+      toast.error("Terjadi kesalahan!");
+      console.error(error);
     } finally {
       setIsLoading(false);
-      console.log("========================================");
     }
   };
 
@@ -133,11 +83,12 @@ export function LoginRegister({ onLogin }: LoginRegisterProps) {
           </p>
         </div>
 
-        {/* Login Card */}
         <Card className="shadow-xl">
           <CardHeader className="space-y-1 pb-4">
             <h2 className="text-2xl font-semibold text-center">Masuk sebagai Admin</h2>
-            <p className="text-sm text-gray-500 text-center">Masukkan kredensial admin Anda</p>
+            <p className="text-sm text-gray-500 text-center">
+              Masukkan kredensial admin Anda
+            </p>
           </CardHeader>
 
           <CardContent>
@@ -199,16 +150,6 @@ export function LoginRegister({ onLogin }: LoginRegisterProps) {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between text-sm">
-                <label className="flex items-center">
-                  <input type="checkbox" className="mr-2" disabled={isLoading} />
-                  Ingat saya
-                </label>
-                <a href="#" className="text-blue-600 hover:underline">
-                  Lupa password?
-                </a>
-              </div>
-
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? (
                   <>
@@ -221,7 +162,6 @@ export function LoginRegister({ onLogin }: LoginRegisterProps) {
               </Button>
             </form>
 
-            {/* Tombol akses tanpa login */}
             <div className="mt-6">
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">
@@ -244,7 +184,6 @@ export function LoginRegister({ onLogin }: LoginRegisterProps) {
           </CardContent>
         </Card>
 
-        {/* Footer */}
         <p className="text-center text-sm text-gray-500 mt-6">
           © 2025 EcoScope Banyumas. Semua hak dilindungi.
         </p>

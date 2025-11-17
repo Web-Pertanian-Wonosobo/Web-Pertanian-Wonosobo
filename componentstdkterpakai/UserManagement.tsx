@@ -33,6 +33,7 @@ export function UserManagement() {
       role: 'admin',
       status: 'active',
       lastLogin: '2024-01-15 10:30:00',
+      address: 'Jl. Utama, Wonosobo, Jawa Tengah',
       createdAt: '2024-01-01 08:00:00',
       description: 'Administrator utama sistem EcoScope Wonosobo'
     },
@@ -44,6 +45,7 @@ export function UserManagement() {
       status: 'active',
       lastLogin: '2024-01-14 16:45:00',
       createdAt: '2024-01-05 09:15:00',
+      address: 'Jl. Pertanian, Wonosobo, Jawa Tengah',
       description: 'Moderator untuk manajemen data pertanian dan harga komoditas'
     },
     {
@@ -77,10 +79,10 @@ export function UserManagement() {
   // Filter users berdasarkan search dan filter
   const filteredUsers = users.filter(user => {
     const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.email.toLowerCase().includes(searchTerm.toLowerCase());
+      user.email.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesRole = filterRole === 'all' || user.role === filterRole;
     const matchesStatus = filterStatus === 'all' || user.status === filterStatus;
-    
+
     return matchesSearch && matchesRole && matchesStatus;
   });
 
@@ -101,7 +103,6 @@ export function UserManagement() {
       return;
     }
 
-    // Check if email already exists
     if (users.some(user => user.email === formData.email)) {
       toast.error('Email sudah digunakan');
       return;
@@ -130,7 +131,6 @@ export function UserManagement() {
       return;
     }
 
-    // Check if email already exists (excluding current user)
     if (users.some(user => user.email === formData.email && user.id !== selectedUser.id)) {
       toast.error('Email sudah digunakan');
       return;
@@ -144,7 +144,8 @@ export function UserManagement() {
             email: formData.email,
             role: formData.role,
             status: formData.status,
-            description: formData.description
+            description: formData.description,
+            address: formData.address
           }
         : user
     );
@@ -202,7 +203,7 @@ export function UserManagement() {
             Kelola akun pengguna dan hak akses sistem EcoScope Wonosobo
           </p>
         </div>
-        
+
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={resetForm}>
@@ -217,6 +218,8 @@ export function UserManagement() {
                 Lengkapi form di bawah untuk menambahkan user baru ke sistem.
               </DialogDescription>
             </DialogHeader>
+
+            {/* FORM ADD */}
             <div className="space-y-4">
               <div>
                 <Label htmlFor="add-name">Nama Lengkap</Label>
@@ -227,6 +230,7 @@ export function UserManagement() {
                   placeholder="Masukkan nama lengkap"
                 />
               </div>
+
               <div>
                 <Label htmlFor="add-email">Email</Label>
                 <Input
@@ -237,9 +241,10 @@ export function UserManagement() {
                   placeholder="email@example.com"
                 />
               </div>
+
               <div>
-                <Label htmlFor="add-role">Role</Label>
-                <Select value={formData.role} onValueChange={(value: 'admin' | 'moderator') => setFormData({ ...formData, role: value })}>
+                <Label>Role</Label>
+                <Select value={formData.role} onValueChange={(v: 'admin' | 'moderator') => setFormData({ ...formData, role: v })}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -249,9 +254,10 @@ export function UserManagement() {
                   </SelectContent>
                 </Select>
               </div>
+
               <div>
-                <Label htmlFor="add-status">Status</Label>
-                <Select value={formData.status} onValueChange={(value: 'active' | 'inactive') => setFormData({ ...formData, status: value })}>
+                <Label>Status</Label>
+                <Select value={formData.status} onValueChange={(v: 'active' | 'inactive') => setFormData({ ...formData, status: v })}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -261,27 +267,28 @@ export function UserManagement() {
                   </SelectContent>
                 </Select>
               </div>
+
               <div>
-                <Label htmlFor="add-description">Deskripsi (Opsional)</Label>
+                <Label>Deskripsi (Opsional)</Label>
                 <Textarea
-                  id="add-description"
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="Deskripsi tugas atau tanggung jawab"
                   rows={3}
+                  placeholder="Deskripsi tugas atau tanggung jawab"
                 />
               </div>
-               <div>
-                <Label htmlFor="add-address">Alamat</Label>
+
+              <div>
+                <Label>Alamat</Label>
                 <Textarea
-                  id="add-address"
                   value={formData.address}
                   onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  placeholder="Alamat"
                   rows={3}
+                  placeholder="Alamat"
                 />
               </div>
             </div>
+
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
                 Batal
@@ -294,29 +301,31 @@ export function UserManagement() {
         </Dialog>
       </div>
 
+      {/* TABEL USER */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center justify-between">
+          {/* <CardTitle className="flex items-center justify-between">
             <span>Daftar User ({filteredUsers.length})</span>
-          </CardTitle>
-          
-          {/* Filter dan Search */}
-          <div className="flex flex-col sm:flex-row gap-4 mt-4">
-            <div className="flex-1">
+          </CardTitle> */}
+
+          {/* Filter */}
+          {/* <div className="flex flex-col sm:flex-row gap-4 mt-4"> */}
+            {/* <div className="flex-1"> */}
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                {/* <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <Input
                   placeholder="Cari berdasarkan nama atau email..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
-                />
-              </div>
-            </div>
-            <div className="flex gap-2">
+                /> */}
+              {/* </div> */}
+            {/* </div> */}
+
+            {/* <div className="flex gap-2">
               <Select value={filterRole} onValueChange={setFilterRole}>
                 <SelectTrigger className="w-32">
-                  <SelectValue placeholder="Semua Role" />
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Semua Role</SelectItem>
@@ -324,9 +333,10 @@ export function UserManagement() {
                   <SelectItem value="moderator">Moderator</SelectItem>
                 </SelectContent>
               </Select>
+
               <Select value={filterStatus} onValueChange={setFilterStatus}>
                 <SelectTrigger className="w-32">
-                  <SelectValue placeholder="Semua Status" />
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Semua Status</SelectItem>
@@ -334,34 +344,31 @@ export function UserManagement() {
                   <SelectItem value="inactive">Tidak Aktif</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
+            </div> */}
           </div>
         </CardHeader>
-        
+
         <CardContent>
           <div className="overflow-x-auto">
             <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>User</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Login Terakhir</TableHead>
-                  <TableHead>Dibuat</TableHead>
-                  <TableHead className="text-right">Aksi</TableHead>
-                </TableRow>
-              </TableHeader>
+             <TableHeader>
+          <TableRow>
+            <TableHead>User</TableHead>
+            <TableHead className="text-center">Role</TableHead>
+            <TableHead className="text-center">Status</TableHead>
+            <TableHead className="text-center">Login Terakhir</TableHead>
+            <TableHead className="text-center">Dibuat</TableHead>
+            <TableHead>Alamat</TableHead>
+            <TableHead className="text-center">Aksi</TableHead>
+          </TableRow>
+        </TableHeader>
+
               <TableBody>
                 {filteredUsers.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8">
-                      <div className="text-gray-500">
-                        <User className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                        <p>Tidak ada user yang ditemukan</p>
-                        {searchTerm && (
-                          <p className="text-sm">Coba ubah kata kunci pencarian</p>
-                        )}
-                      </div>
+                    <TableCell colSpan={7} className="text-center py-8">
+                      <User className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                      Tidak ada user yang ditemukan
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -378,45 +385,46 @@ export function UserManagement() {
                           )}
                         </div>
                       </TableCell>
-                      <TableCell>
-                        <Badge variant={getRoleBadgeVariant(user.role)} className="flex items-center gap-1 w-fit">
+
+                      <TableCell className="text-center">
+                        <Badge variant={getRoleBadgeVariant(user.role)} className="flex items-center gap-1 justify-center w-fit mx-auto">
                           {getRoleIcon(user.role)}
                           {user.role === 'admin' ? 'Admin' : 'Moderator'}
                         </Badge>
                       </TableCell>
-                      <TableCell>
+
+                      <TableCell className="text-center">
                         <Badge variant={getStatusBadgeVariant(user.status)}>
                           {user.status === 'active' ? 'Aktif' : 'Tidak Aktif'}
                         </Badge>
                       </TableCell>
+
+                      <TableCell className="text-center">
+                        {user.lastLogin || <span className="text-gray-400">Belum pernah login</span>}
+                      </TableCell>
+
+                      <TableCell className="text-center">{user.createdAt}</TableCell>
+
+                      {/* ✅ Alamat sudah tampil */}
                       <TableCell>
                         <div className="text-sm">
-                          {user.lastLogin ? (
-                            <span>{user.lastLogin}</span>
-                          ) : (
-                            <span className="text-gray-400">Belum pernah login</span>
-                          )}
+                          {user.address || '-'}
                         </div>
                       </TableCell>
-                      <TableCell>
-                        <div className="text-sm">{user.createdAt}</div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2 justify-end">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => openEditDialog(user)}
-                          >
+
+                      <TableCell className="text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <Button variant="ghost" size="sm" onClick={() => openEditDialog(user)}>
                             <Pencil className="w-4 h-4" />
                           </Button>
+
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <Button
                                 variant="ghost"
                                 size="sm"
                                 disabled={user.email === 'admin@ecoscope-wonosobo.id'}
-                                className="text-red-600 hover:text-red-700"
+                                className="text-red-600"
                               >
                                 <Trash2 className="w-4 h-4" />
                               </Button>
@@ -425,8 +433,7 @@ export function UserManagement() {
                               <AlertDialogHeader>
                                 <AlertDialogTitle>Hapus User</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  Apakah Anda yakin ingin menghapus user "{user.name}"? 
-                                  Tindakan ini tidak dapat dibatalkan.
+                                  Apakah Anda yakin ingin menghapus user "{user.name}"?
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
@@ -446,12 +453,13 @@ export function UserManagement() {
                   ))
                 )}
               </TableBody>
+
             </Table>
           </div>
         </CardContent>
       </Card>
 
-      {/* Edit Dialog */}
+      {/* EDIT USER */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -460,33 +468,32 @@ export function UserManagement() {
               Perbarui informasi user yang dipilih.
             </DialogDescription>
           </DialogHeader>
+
           <div className="space-y-4">
             <div>
-              <Label htmlFor="edit-name">Nama Lengkap</Label>
+              <Label>Nama Lengkap</Label>
               <Input
-                id="edit-name"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="Masukkan nama lengkap"
               />
             </div>
+
             <div>
-              <Label htmlFor="edit-email">Email</Label>
+              <Label>Email</Label>
               <Input
-                id="edit-email"
                 type="email"
                 value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                placeholder="email@example.com"
                 disabled={selectedUser?.email === 'admin@ecoscope-wonosobo.id'}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               />
             </div>
+
             <div>
-              <Label htmlFor="edit-role">Role</Label>
-              <Select 
-                value={formData.role} 
-                onValueChange={(value: 'admin' | 'moderator') => setFormData({ ...formData, role: value })}
+              <Label>Role</Label>
+              <Select
+                value={formData.role}
                 disabled={selectedUser?.email === 'admin@ecoscope-wonosobo.id'}
+                onValueChange={(v: 'admin' | 'moderator') => setFormData({ ...formData, role: v })}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -497,12 +504,13 @@ export function UserManagement() {
                 </SelectContent>
               </Select>
             </div>
+
             <div>
-              <Label htmlFor="edit-status">Status</Label>
-              <Select 
-                value={formData.status} 
-                onValueChange={(value: 'active' | 'inactive') => setFormData({ ...formData, status: value })}
+              <Label>Status</Label>
+              <Select
+                value={formData.status}
                 disabled={selectedUser?.email === 'admin@ecoscope-wonosobo.id'}
+                onValueChange={(v: 'active' | 'inactive') => setFormData({ ...formData, status: v })}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -513,27 +521,26 @@ export function UserManagement() {
                 </SelectContent>
               </Select>
             </div>
+
             <div>
-              <Label htmlFor="edit-description">Deskripsi (Opsional)</Label>
+              <Label>Deskripsi</Label>
               <Textarea
-                id="edit-description"
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Deskripsi tugas atau tanggung jawab"
                 rows={3}
               />
             </div>
-             <div>
-                <Label htmlFor="edit-address">Alamat</Label>
-                <Textarea
-                  id="edit-address"
-                  value={formData.address}
-                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  placeholder="Alamat"
-                  rows={3}
-                />
-              </div>
+
+            <div>
+              <Label>Alamat</Label>
+              <Textarea
+                value={formData.address}
+                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                rows={3}
+              />
+            </div>
           </div>
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
               Batal
@@ -544,6 +551,7 @@ export function UserManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
     </div>
   );
 }
