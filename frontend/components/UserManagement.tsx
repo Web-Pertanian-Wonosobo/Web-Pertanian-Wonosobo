@@ -59,6 +59,7 @@ export function UserManagement() {
       address: 'Jl. Pertanian, Wonosobo, Jawa Tengah',
       description: 'Operator input data cuaca dan analisis lereng'
     }
+    
   ]);
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -354,40 +355,35 @@ export function UserManagement() {
         <CardHeader>
           <CardTitle className="text-lg">Daftar User ({filteredUsers.length})</CardTitle>
         </CardHeader>
-
-        <CardContent>
+      <CardContent>
           <div className="border rounded-lg overflow-hidden">
             <div className="overflow-x-auto">
               <div className="max-h-96 overflow-y-auto">
-                <table className="w-full border-collapse">
+                <table className="w-full table-fixed border-collapse">
                   <thead className="sticky top-0 bg-white z-20 shadow-md">
                     <tr>
-                      <th className="text-left px-4 py-3 font-semibold border-b">User</th>
-                      <th className="text-center px-4 py-3 font-semibold border-b">Role</th>
-                      <th className="text-center px-4 py-3 font-semibold border-b">Status</th>
-                      <th className="text-center px-4 py-3 font-semibold border-b">Login Terakhir</th>
-                      <th className="text-center px-4 py-3 font-semibold border-b">Dibuat</th>
-                      <th className="text-left px-4 py-3 font-semibold border-b">Alamat</th>
-                      <th className="text-center px-4 py-3 font-semibold border-b">Aksi</th>
+                      <th className="text-left px-4 py-3 font-semibold border-b w-2/6">User</th>
+                      <th className="text-center px-4 py-3 font-semibold border-b w-1/12">Role</th>
+                      <th className="text-center px-4 py-3 font-semibold border-b w-1/12">Status</th>
+                      <th className="text-center px-4 py-3 font-semibold border-b w-1/6">Login Terakhir</th>
+                      <th className="text-center px-4 py-3 font-semibold border-b w-1/6">Dibuat</th>
+                      <th className="text-left px-4 py-3 font-semibold border-b w-2/12">Alamat</th>
+                      <th className="text-center px-4 py-3 font-semibold border-b w-1/12">Aksi</th>
                     </tr>
                   </thead>
-                </table>
-              </div>
-              
-              <div className="max-h-96 overflow-y-auto border-t">
-                <Table>
-                  <TableBody>
+
+                  <tbody>
                     {filteredUsers.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8">
+                      <tr>
+                        <td colSpan={7} className="text-center py-8">
                           <User className="w-12 h-12 mx-auto mb-3 opacity-50" />
                           <p className="text-gray-500">Tidak ada user yang ditemukan</p>
-                        </TableCell>
-                      </TableRow>
+                        </td>
+                      </tr>
                     ) : (
                       filteredUsers.map((user) => (
-                        <TableRow key={user.id}>
-                          <TableCell>
+                        <tr key={user.id} className="align-top">
+                          <td className="px-4 py-3">
                             <div>
                               <div className="font-medium">{user.name}</div>
                               <div className="text-sm text-gray-500">{user.email}</div>
@@ -397,34 +393,34 @@ export function UserManagement() {
                                 </div>
                               )}
                             </div>
-                          </TableCell>
+                          </td>
 
-                          <TableCell className="text-center">
+                          <td className="px-4 py-3 text-center">
                             <Badge variant={getRoleBadgeVariant(user.role)} className="flex items-center gap-1 justify-center w-fit mx-auto">
                               {getRoleIcon(user.role)}
                               {user.role === 'admin' ? 'Admin' : 'Moderator'}
                             </Badge>
-                          </TableCell>
+                          </td>
 
-                          <TableCell className="text-center">
+                          <td className="px-4 py-3 text-center">
                             <Badge variant={getStatusBadgeVariant(user.status)}>
                               {user.status === 'active' ? 'Aktif' : 'Tidak Aktif'}
                             </Badge>
-                          </TableCell>
+                          </td>
 
-                          <TableCell className="text-center">
+                          <td className="px-4 py-3 text-center">
                             {user.lastLogin || <span className="text-gray-400">Belum pernah login</span>}
-                          </TableCell>
+                          </td>
 
-                          <TableCell className="text-center">{user.createdAt}</TableCell>
+                          <td className="px-4 py-3 text-center">{user.createdAt}</td>
 
-                          <TableCell>
+                          <td className="px-4 py-3">
                             <div className="text-sm">
                               {user.address || '-'}
                             </div>
-                          </TableCell>
+                          </td>
 
-                          <TableCell className="text-center">
+                          <td className="px-4 py-3 text-center">
                             <div className="flex items-center justify-center gap-2">
                               <Button variant="ghost" size="sm" onClick={() => openEditDialog(user)}>
                                 <Pencil className="w-4 h-4" />
@@ -460,16 +456,17 @@ export function UserManagement() {
                                 </AlertDialogContent>
                               </AlertDialog>
                             </div>
-                          </TableCell>
-                        </TableRow>
+                          </td>
+                        </tr>
                       ))
                     )}
-                  </TableBody>
-                </Table>
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
         </CardContent>
+
       </Card>
 
       {/* EDIT USER */}
