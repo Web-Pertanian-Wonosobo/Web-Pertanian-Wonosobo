@@ -9,7 +9,7 @@ import { Badge } from './ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Textarea } from './ui/textarea';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
-import { Plus, Pencil, Trash2, Search, UserPlus, Shield, User } from 'lucide-react';
+import { Pencil, Trash2, Search, UserPlus, Shield, User } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface User {
@@ -56,6 +56,7 @@ export function UserManagement() {
       status: 'inactive',
       lastLogin: '2024-01-10 14:20:00',
       createdAt: '2024-01-08 11:30:00',
+      address: 'Jl. Pertanian, Wonosobo, Jawa Tengah',
       description: 'Operator input data cuaca dan analisis lereng'
     }
   ]);
@@ -219,7 +220,6 @@ export function UserManagement() {
               </DialogDescription>
             </DialogHeader>
 
-            {/* FORM ADD */}
             <div className="space-y-4">
               <div>
                 <Label htmlFor="add-name">Nama Lengkap</Label>
@@ -301,30 +301,28 @@ export function UserManagement() {
         </Dialog>
       </div>
 
-      {/* TABEL USER */}
-      <Card>
+      {/* FILTER SECTION */}
+      {/* <Card>
         <CardHeader>
-          {/* <CardTitle className="flex items-center justify-between">
-            <span>Daftar User ({filteredUsers.length})</span>
-          </CardTitle> */}
-
-          {/* Filter */}
-          {/* <div className="flex flex-col sm:flex-row gap-4 mt-4"> */}
-            {/* <div className="flex-1"> */}
+          <CardTitle className="text-lg">Filter Data</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex-1">
               <div className="relative">
-                {/* <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <Input
                   placeholder="Cari berdasarkan nama atau email..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
-                /> */}
-              {/* </div> */}
-            {/* </div> */}
+                />
+              </div>
+            </div>
 
-            {/* <div className="flex gap-2">
+            <div className="w-full sm:w-40">
               <Select value={filterRole} onValueChange={setFilterRole}>
-                <SelectTrigger className="w-32">
+                <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -333,9 +331,11 @@ export function UserManagement() {
                   <SelectItem value="moderator">Moderator</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
 
+            <div className="w-full sm:w-40">
               <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="w-32">
+                <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -344,117 +344,130 @@ export function UserManagement() {
                   <SelectItem value="inactive">Tidak Aktif</SelectItem>
                 </SelectContent>
               </Select>
-            </div> */}
+            </div>
           </div>
+        </CardContent>
+      </Card> */}
+
+           {/* TABEL USER */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Daftar User ({filteredUsers.length})</CardTitle>
         </CardHeader>
 
         <CardContent>
-          <div className="overflow-x-auto">
-            <Table>
-             <TableHeader>
-          <TableRow>
-            <TableHead>User</TableHead>
-            <TableHead className="text-center">Role</TableHead>
-            <TableHead className="text-center">Status</TableHead>
-            <TableHead className="text-center">Login Terakhir</TableHead>
-            <TableHead className="text-center">Dibuat</TableHead>
-            <TableHead>Alamat</TableHead>
-            <TableHead className="text-center">Aksi</TableHead>
-          </TableRow>
-        </TableHeader>
-
-              <TableBody>
-                {filteredUsers.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8">
-                      <User className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                      Tidak ada user yang ditemukan
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredUsers.map((user) => (
-                    <TableRow key={user.id}>
-                      <TableCell>
-                        <div>
-                          <div className="font-medium">{user.name}</div>
-                          <div className="text-sm text-gray-500">{user.email}</div>
-                          {user.description && (
-                            <div className="text-xs text-gray-400 mt-1 max-w-xs truncate">
-                              {user.description}
+          <div className="border rounded-lg overflow-hidden">
+            <div className="overflow-x-auto">
+              <div className="max-h-96 overflow-y-auto">
+                <table className="w-full border-collapse">
+                  <thead className="sticky top-0 bg-white z-20 shadow-md">
+                    <tr>
+                      <th className="text-left px-4 py-3 font-semibold border-b">User</th>
+                      <th className="text-center px-4 py-3 font-semibold border-b">Role</th>
+                      <th className="text-center px-4 py-3 font-semibold border-b">Status</th>
+                      <th className="text-center px-4 py-3 font-semibold border-b">Login Terakhir</th>
+                      <th className="text-center px-4 py-3 font-semibold border-b">Dibuat</th>
+                      <th className="text-left px-4 py-3 font-semibold border-b">Alamat</th>
+                      <th className="text-center px-4 py-3 font-semibold border-b">Aksi</th>
+                    </tr>
+                  </thead>
+                </table>
+              </div>
+              
+              <div className="max-h-96 overflow-y-auto border-t">
+                <Table>
+                  <TableBody>
+                    {filteredUsers.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center py-8">
+                          <User className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                          <p className="text-gray-500">Tidak ada user yang ditemukan</p>
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredUsers.map((user) => (
+                        <TableRow key={user.id}>
+                          <TableCell>
+                            <div>
+                              <div className="font-medium">{user.name}</div>
+                              <div className="text-sm text-gray-500">{user.email}</div>
+                              {user.description && (
+                                <div className="text-xs text-gray-400 mt-1 max-w-xs truncate">
+                                  {user.description}
+                                </div>
+                              )}
                             </div>
-                          )}
-                        </div>
-                      </TableCell>
+                          </TableCell>
 
-                      <TableCell className="text-center">
-                        <Badge variant={getRoleBadgeVariant(user.role)} className="flex items-center gap-1 justify-center w-fit mx-auto">
-                          {getRoleIcon(user.role)}
-                          {user.role === 'admin' ? 'Admin' : 'Moderator'}
-                        </Badge>
-                      </TableCell>
+                          <TableCell className="text-center">
+                            <Badge variant={getRoleBadgeVariant(user.role)} className="flex items-center gap-1 justify-center w-fit mx-auto">
+                              {getRoleIcon(user.role)}
+                              {user.role === 'admin' ? 'Admin' : 'Moderator'}
+                            </Badge>
+                          </TableCell>
 
-                      <TableCell className="text-center">
-                        <Badge variant={getStatusBadgeVariant(user.status)}>
-                          {user.status === 'active' ? 'Aktif' : 'Tidak Aktif'}
-                        </Badge>
-                      </TableCell>
+                          <TableCell className="text-center">
+                            <Badge variant={getStatusBadgeVariant(user.status)}>
+                              {user.status === 'active' ? 'Aktif' : 'Tidak Aktif'}
+                            </Badge>
+                          </TableCell>
 
-                      <TableCell className="text-center">
-                        {user.lastLogin || <span className="text-gray-400">Belum pernah login</span>}
-                      </TableCell>
+                          <TableCell className="text-center">
+                            {user.lastLogin || <span className="text-gray-400">Belum pernah login</span>}
+                          </TableCell>
 
-                      <TableCell className="text-center">{user.createdAt}</TableCell>
+                          <TableCell className="text-center">{user.createdAt}</TableCell>
 
-                      {/* ✅ Alamat sudah tampil */}
-                      <TableCell>
-                        <div className="text-sm">
-                          {user.address || '-'}
-                        </div>
-                      </TableCell>
+                          <TableCell>
+                            <div className="text-sm">
+                              {user.address || '-'}
+                            </div>
+                          </TableCell>
 
-                      <TableCell className="text-center">
-                        <div className="flex items-center justify-center gap-2">
-                          <Button variant="ghost" size="sm" onClick={() => openEditDialog(user)}>
-                            <Pencil className="w-4 h-4" />
-                          </Button>
-
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                disabled={user.email === 'admin@ecoscope-wonosobo.id'}
-                                className="text-red-600"
-                              >
-                                <Trash2 className="w-4 h-4" />
+                          <TableCell className="text-center">
+                            <div className="flex items-center justify-center gap-2">
+                              <Button variant="ghost" size="sm" onClick={() => openEditDialog(user)}>
+                                <Pencil className="w-4 h-4" />
                               </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Hapus User</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Apakah Anda yakin ingin menghapus user "{user.name}"?
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Batal</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => handleDeleteUser(user.id)}
-                                  className="bg-red-600 hover:bg-red-700"
-                                >
-                                  Hapus
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
 
-            </Table>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    disabled={user.email === 'admin@ecoscope-wonosobo.id'}
+                                    className="text-red-600"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Hapus User</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Apakah Anda yakin ingin menghapus user "{user.name}"?
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Batal</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() => handleDeleteUser(user.id)}
+                                      className="bg-red-600 hover:bg-red-700"
+                                    >
+                                      Hapus
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>

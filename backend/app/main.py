@@ -1,7 +1,22 @@
 from fastapi import FastAPI
+import os
+from sqlalchemy import create_engine
+from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
 from app.routers import weather, market, auth
 
+#load environment variables
+load_dotenv()
+
+# Database configuration
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+# Validate DATABASE_URL
+if not DATABASE_URL:
+    raise ValueError("DATABASE_URL environment variable is not set")
+
+# create database engine
+engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 app = FastAPI(
     title="Web Petani Wonosobo API",
     description="API untuk data cuaca, harga pasar, dan prediksi pertanian",
