@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -18,7 +18,12 @@ import {
   DollarSign
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { fetchAllKomoditas, addKomoditas, updateKomoditas, deleteKomoditas, type Komoditas } from '../src/services/komoditasApi';
+import { 
+  fetchPriceData, 
+  addPriceData, 
+  updatePriceData, 
+  deletePriceData
+} from '../src/services/priceDataApi';
 
 // Data akan diambil dari API, bukan hardcoded
 const initialPriceData: any[] = [];
@@ -47,40 +52,38 @@ export function PriceDataManagement() {
     date: new Date().toISOString().split('T')[0]
   });
 
-  // Fetch data dari API saat component mount
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const komoditas = await fetchAllKomoditas();
-        console.log("🔍 [PriceDataManagement] Data dari API:", komoditas);
-        
-        // Convert ke format yang digunakan PriceDataManagement
-        const converted = komoditas.map((item, index) => ({
-          id: item.id || index + 1,
-          commodity: item.nama || 'Tidak diketahui',
-          location: 'Wonosobo Kota', // Default location karena API tidak menyediakan
-          currentPrice: item.harga || 0,
-          previousPrice: item.harga || 0, // Tidak ada data previous, gunakan current
-          unit: item.satuan || 'kg',
-          date: item.tanggal || new Date().toISOString().split('T')[0],
-          trend: 'stable' as const // Default stable karena tidak ada data perubahan
-        }));
-        
-        setPriceData(converted);
-        console.log("✅ [PriceDataManagement] Data converted:", converted);
-      } catch (error) {
-        console.error("Error fetching komoditas:", error);
-        setPriceData([]);
-      } finally {
-        setLoading(false);
-      }
-    };
+  // Fetch data dari database lokal
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const data = await fetchPriceData(undefined, undefined, undefined, undefined, 500);
+      console.log("🔍 [PriceDataManagement] Data dari database:", data);
+      
+      // Convert ke format yang digunakan PriceDataManagement
+      const converted = data.map((item) => ({
+        id: item.price_id,
+        commodity: item.commodity_name,
+        location: item.market_location,
+        currentPrice: item.price,
+        previousPrice: item.price, // Tidak ada data previous
+        unit: item.unit,
+        date: item.date,
+        trend: 'stable' as const
+      }));
+      
+      setPriceData(converted);
+      console.log("✅ [PriceDataManagement] Data loaded:", converted.length, "records");
+    } catch (error) {
+      console.error("Error fetching price data:", error);
+      toast.error("Gagal memuat data harga");
+      setPriceData([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    fetchData();
-    // Refresh tiap 10 menit
-    const interval = setInterval(fetchData, 10 * 60 * 1000);
-    return () => clearInterval(interval);
+  useEffect(() => {
+    loadData();
   }, []);
 
   const resetForm = () => {
@@ -107,57 +110,32 @@ export function PriceDataManagement() {
     }
 
     try {
+      const dataToSubmit = {
+        user_id: 1, // Admin user ID
+        commodity_name: formData.commodity,
+        market_location: formData.location,
+        unit: formData.unit,
+        price: price,
+        date: formData.date,
+      };
+
       if (editingItem) {
-        // Update existing item di backend
-        const result = await updateKomoditas(editingItem.id, {
-          commodity_name: formData.commodity,
-          market_location: formData.location,
-          unit: formData.unit,
-          price: price,
-          date: formData.date,
-        });
+        // Update existing item
+        const result = await updatePriceData(editingItem.id, dataToSubmit);
 
         if (result.success) {
           toast.success('Data harga berhasil diperbarui');
-          // Refresh data dari backend
-          const refreshed = await fetchAllKomoditas();
-          setPriceData(refreshed.map((item, index) => ({
-            id: item.id || index + 1,
-            commodity: item.nama || 'Tidak diketahui',
-            location: 'Wonosobo Kota',
-            currentPrice: item.harga || 0,
-            previousPrice: item.harga || 0,
-            unit: item.satuan || 'kg',
-            date: item.tanggal || new Date().toISOString().split('T')[0],
-            trend: 'stable' as const
-          })));
+          await loadData(); // Refresh data
         } else {
           toast.error(result.message);
         }
       } else {
-        // Add new item ke backend
-        const result = await addKomoditas({
-          commodity_name: formData.commodity,
-          market_location: formData.location,
-          unit: formData.unit,
-          price: price,
-          date: formData.date,
-        });
+        // Add new item
+        const result = await addPriceData(dataToSubmit);
 
         if (result.success) {
           toast.success('Data harga berhasil ditambahkan');
-          // Refresh data dari backend
-          const refreshed = await fetchAllKomoditas();
-          setPriceData(refreshed.map((item, index) => ({
-            id: item.id || index + 1,
-            commodity: item.nama || 'Tidak diketahui',
-            location: 'Wonosobo Kota',
-            currentPrice: item.harga || 0,
-            previousPrice: item.harga || 0,
-            unit: item.satuan || 'kg',
-            date: item.tanggal || new Date().toISOString().split('T')[0],
-            trend: 'stable' as const
-          })));
+          await loadData(); // Refresh data
         } else {
           toast.error(result.message);
         }
@@ -184,23 +162,16 @@ export function PriceDataManagement() {
   };
 
   const handleDelete = async (id: number) => {
+    if (!confirm('Apakah Anda yakin ingin menghapus data ini?')) {
+      return;
+    }
+
     try {
-      const result = await deleteKomoditas(id);
+      const result = await deletePriceData(id);
       
       if (result.success) {
         toast.success('Data harga berhasil dihapus');
-        // Refresh data dari backend
-        const refreshed = await fetchAllKomoditas();
-        setPriceData(refreshed.map((item, index) => ({
-          id: item.id || index + 1,
-          commodity: item.nama || 'Tidak diketahui',
-          location: 'Wonosobo Kota',
-          currentPrice: item.harga || 0,
-          previousPrice: item.harga || 0,
-          unit: item.satuan || 'kg',
-          date: item.tanggal || new Date().toISOString().split('T')[0],
-          trend: 'stable' as const
-        })));
+        await loadData(); // Refresh data
       } else {
         toast.error(result.message);
       }

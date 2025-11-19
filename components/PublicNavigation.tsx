@@ -8,7 +8,9 @@ import {
   Mountain,
   Menu,
   Home,
-  User
+  User,
+  Map,
+  BarChart3
 } from 'lucide-react';
 
 interface PublicNavigationProps {
@@ -22,7 +24,9 @@ export function PublicNavigation({ currentPage, onPageChange, isLoggedIn }: Publ
     { id: 'dashboard', label: 'Dashboard', icon: Home },
     { id: 'weather', label: 'Prediksi Cuaca', icon: CloudRain },
     { id: 'price-prediction', label: 'Prediksi Harga', icon: TrendingUp },
+    { id: 'price-charts', label: 'Grafik Harga', icon: BarChart3 },
     { id: 'slope-analysis', label: 'Analisis Lereng', icon: Mountain },
+    { id: 'wilayah', label: 'Data Wilayah', icon: Map },
   ];
 
   const NavContent = () => (

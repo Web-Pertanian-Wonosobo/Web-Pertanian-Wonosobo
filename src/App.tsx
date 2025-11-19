@@ -45,7 +45,7 @@ export default function App() {
     }
     
     // Jika berpindah ke halaman public
-    if (['dashboard', 'weather', 'price-prediction', 'slope-analysis'].includes(page)) {
+    if (['dashboard', 'weather', 'price-prediction', 'slope-analysis', 'wilayah'].includes(page)) {
       setAppMode('public');
     }
   };

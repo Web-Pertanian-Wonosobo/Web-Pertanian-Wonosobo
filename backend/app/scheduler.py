@@ -29,22 +29,31 @@ def sync_market_data_job():
 
 def start_scheduler():
     """
-    Memulai scheduler untuk auto-sync
+    Memulai scheduler untuk auto-sync (default: 1 jam)
+    """
+    start_scheduler_with_interval(hours=1)
+
+def start_scheduler_with_interval(hours=24):
+    """
+    Memulai scheduler dengan interval custom
+    
+    Args:
+        hours: Interval sync dalam jam (default: 24 jam / sekali sehari)
     """
     try:
-        # Add job untuk sync setiap 1 jam
+        # Add job untuk sync setiap X jam
         scheduler.add_job(
             func=sync_market_data_job,
-            trigger=IntervalTrigger(hours=1),
+            trigger=IntervalTrigger(hours=hours),
             id='market_sync_job',
-            name='Sync Market Data from API',
+            name=f'Sync Market Data from API (every {hours}h)',
             replace_existing=True
         )
         
         # Start scheduler
         scheduler.start()
         logger.info("✅ Scheduler started successfully")
-        logger.info("📅 Market data will sync every 1 hour")
+        logger.info(f"📅 Market data will sync every {hours} hour(s)")
         
         # Run once immediately on startup
         sync_market_data_job()
