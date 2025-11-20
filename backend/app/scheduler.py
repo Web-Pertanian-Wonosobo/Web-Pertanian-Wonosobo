@@ -26,6 +26,9 @@ def sync_market_data_job():
         logger.info(f"✅ Market data sync completed: {result}")
     except Exception as e:
         logger.error(f"❌ Market data sync failed: {e}")
+        # Don't raise exception to prevent scheduler from stopping
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
 
 def start_scheduler():
     """

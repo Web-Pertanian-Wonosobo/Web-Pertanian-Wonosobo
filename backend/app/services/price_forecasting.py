@@ -11,6 +11,11 @@ from prophet import Prophet
 from sqlalchemy.orm import Session
 from app.models.market_model import MarketPrice
 import logging
+import warnings
+
+# Suppress Prophet warnings (BANK ON CONFIDENCE INTERVAL, etc)
+warnings.filterwarnings('ignore', category=FutureWarning)
+warnings.filterwarnings('ignore', module='prophet')
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
