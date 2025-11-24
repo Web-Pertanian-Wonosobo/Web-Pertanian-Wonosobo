@@ -1,15 +1,16 @@
-import React, { useState } from 'react';
+// ...existing code...
+import { useState } from 'react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from './ui/dialog';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
+import { Table, TableBody, TableCell, TableRow } from './ui/table';
 import { Badge } from './ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Textarea } from './ui/textarea';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
-import { Pencil, Trash2, Search, UserPlus, Shield, User } from 'lucide-react';
+import { Pencil, Trash2, UserPlus, Shield, User as UserIcon } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface User {
@@ -61,9 +62,10 @@ export function UserManagement() {
     }
   ]);
 
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterRole, setFilterRole] = useState<string>('all');
-  const [filterStatus, setFilterStatus] = useState<string>('all');
+  // keep state values, but prefix setters with underscore to avoid "unused" errors
+  const [searchTerm, _setSearchTerm] = useState('');
+  const [filterRole, _setFilterRole] = useState<string>('all');
+  const [filterStatus, _setFilterStatus] = useState<string>('all');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -184,7 +186,7 @@ export function UserManagement() {
   };
 
   const getRoleIcon = (role: string) => {
-    return role === 'admin' ? <Shield className="w-4 h-4" /> : <User className="w-4 h-4" />;
+    return role === 'admin' ? <Shield className="w-4 h-4" /> : <UserIcon className="w-4 h-4" />;
   };
 
   const getRoleBadgeVariant = (role: string) => {
@@ -301,55 +303,7 @@ export function UserManagement() {
         </Dialog>
       </div>
 
-      {/* FILTER SECTION */}
-      {/* <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Filter Data</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <Input
-                  placeholder="Cari berdasarkan nama atau email..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
-
-            <div className="w-full sm:w-40">
-              <Select value={filterRole} onValueChange={setFilterRole}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Semua Role</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
-                  <SelectItem value="moderator">Moderator</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="w-full sm:w-40">
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Semua Status</SelectItem>
-                  <SelectItem value="active">Aktif</SelectItem>
-                  <SelectItem value="inactive">Tidak Aktif</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardContent>
-      </Card> */}
-
-           {/* TABEL USER */}
+      {/* TABEL USER */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Daftar User ({filteredUsers.length})</CardTitle>
@@ -380,7 +334,7 @@ export function UserManagement() {
                     {filteredUsers.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={7} className="text-center py-8">
-                          <User className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                          <UserIcon className="w-12 h-12 mx-auto mb-3 opacity-50" />
                           <p className="text-gray-500">Tidak ada user yang ditemukan</p>
                         </TableCell>
                       </TableRow>
@@ -568,3 +522,4 @@ export function UserManagement() {
     </div>
   );
 }
+// ...existing code...
