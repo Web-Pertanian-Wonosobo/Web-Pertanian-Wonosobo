@@ -1,16 +1,15 @@
-// ...existing code...
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from './ui/dialog';
-import { Table, TableBody, TableCell, TableRow } from './ui/table';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Badge } from './ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Textarea } from './ui/textarea';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
-import { Pencil, Trash2, UserPlus, Shield, User as UserIcon } from 'lucide-react';
+import { Pencil, Trash2, Search, UserPlus, Shield, User } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface User {
@@ -63,10 +62,9 @@ export function UserManagement() {
     
   ]);
 
-  // keep state values, but prefix setters with underscore to avoid "unused" errors
-  const [searchTerm, _setSearchTerm] = useState('');
-  const [filterRole, _setFilterRole] = useState<string>('all');
-  const [filterStatus, _setFilterStatus] = useState<string>('all');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterRole, setFilterRole] = useState<string>('all');
+  const [filterStatus, setFilterStatus] = useState<string>('all');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -187,7 +185,7 @@ export function UserManagement() {
   };
 
   const getRoleIcon = (role: string) => {
-    return role === 'admin' ? <Shield className="w-4 h-4" /> : <UserIcon className="w-4 h-4" />;
+    return role === 'admin' ? <Shield className="w-4 h-4" /> : <User className="w-4 h-4" />;
   };
 
   const getRoleBadgeVariant = (role: string) => {
@@ -304,7 +302,55 @@ export function UserManagement() {
         </Dialog>
       </div>
 
-      {/* TABEL USER */}
+      {/* FILTER SECTION */}
+      {/* <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Filter Data</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Input
+                  placeholder="Cari berdasarkan nama atau email..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+
+            <div className="w-full sm:w-40">
+              <Select value={filterRole} onValueChange={setFilterRole}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua Role</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="moderator">Moderator</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="w-full sm:w-40">
+              <Select value={filterStatus} onValueChange={setFilterStatus}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua Status</SelectItem>
+                  <SelectItem value="active">Aktif</SelectItem>
+                  <SelectItem value="inactive">Tidak Aktif</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardContent>
+      </Card> */}
+
+           {/* TABEL USER */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Daftar User ({filteredUsers.length})</CardTitle>
@@ -313,8 +359,8 @@ export function UserManagement() {
           <div className="border rounded-lg overflow-hidden">
             <div className="overflow-x-auto">
               <div className="max-h-96 overflow-y-auto">
-                <table className="w-full table-fixed border-collapse">
-                  <thead className="sticky top-0 bg-white z-20 shadow-md">
+                <table className="w-full table-fixed border-collapse"> // Menggunakan table-fixed untuk lebar kolom tetap
+                  <thead className="sticky top-0 bg-white z-20 shadow-md"> // Menjaga header tetap di atas saat menggulir
                     <tr>
                       <th className="text-left px-4 py-3 font-semibold border-b w-2/6">User</th>
                       <th className="text-center px-4 py-3 font-semibold border-b w-1/12">Role</th>
@@ -328,15 +374,9 @@ export function UserManagement() {
 
                   <tbody>
                     {filteredUsers.length === 0 ? (
-<<<<<<< HEAD
-                      <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8">
-                          <UserIcon className="w-12 h-12 mx-auto mb-3 opacity-50" />
-=======
                       <tr>
                         <td colSpan={7} className="text-center py-8">
                           <User className="w-12 h-12 mx-auto mb-3 opacity-50" />
->>>>>>> 7af691052a86d76d77fe3e440e5abeff40836a5f
                           <p className="text-gray-500">Tidak ada user yang ditemukan</p>
                         </td>
                       </tr>
@@ -525,4 +565,3 @@ export function UserManagement() {
     </div>
   );
 }
-// ...existing code...
