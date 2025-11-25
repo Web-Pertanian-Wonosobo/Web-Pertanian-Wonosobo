@@ -151,24 +151,96 @@ def predict_weather_simple(db: Session, days_ahead: int = 3, location: str = Non
 
 # === 4️⃣ Prediksi cuaca dengan Prophet (utama) ===
 def predict_weather(db: Session, days_ahead: int = 3, location: str = None):
+    """
+    Prediksi cuaca untuk lokasi tertentu atau global.
+    Jika lokasi tidak punya data historis, akan menggunakan interpolasi dari lokasi terdekat.
+    """
     if not PROPHET_AVAILABLE:
         return predict_weather_simple(db, days_ahead, location)
+
+    # Import interpolation service
+    try:
+        from app.services.weather_interpolation import (
+            find_nearest_locations,
+            KECAMATAN_COORDINATES
+        )
+        INTERPOLATION_AVAILABLE = True
+    except Exception:
+        INTERPOLATION_AVAILABLE = False
+        logging.warning("⚠️ Weather interpolation service not available")
 
     query = db.query(WeatherData)
     if location:
         query = query.filter(WeatherData.location_name == location)
     data = query.order_by(WeatherData.date).all()
 
+    # Jika tidak ada data untuk lokasi spesifik, coba interpolasi
+    if not data and location and INTERPOLATION_AVAILABLE:
+        logging.info(f"🔄 Tidak ada data historis untuk {location}, mencoba interpolasi...")
+        
+        # Dapatkan lokasi dengan data yang tersedia
+        available_locations = db.query(WeatherData.location_name).distinct().all()
+        available_locations = [loc[0] for loc in available_locations]
+        
+        if available_locations:
+            # Cari 3 lokasi terdekat yang punya data
+            nearest = find_nearest_locations(location, available_locations, k=3)
+            
+            if nearest:
+                logging.info(f"📍 Menggunakan data dari: {[loc for loc, _ in nearest]}")
+                
+                # Gabungkan data dari lokasi terdekat dengan bobot
+                all_data = []
+                total_weight = 0
+                
+                for loc_name, distance in nearest:
+                    loc_data = db.query(WeatherData).filter(
+                        WeatherData.location_name == loc_name
+                    ).order_by(WeatherData.date).all()
+                    
+                    # Bobot berdasarkan inverse distance
+                    weight = 1 / ((distance + 0.1) ** 2)
+                    total_weight += weight
+                    
+                    for d in loc_data:
+                        if d.temperature is not None:
+                            all_data.append({
+                                "ds": d.date,
+                                "y": d.temperature * weight,
+                                "weight": weight
+                            })
+                
+                if all_data:
+                    # Aggregate weighted temperatures by date
+                    df_weighted = pd.DataFrame(all_data)
+                    
+                    # Group by date and calculate weighted average properly
+                    df_grouped = df_weighted.groupby("ds").apply(
+                        lambda x: pd.Series({
+                            "y": x["y"].sum() / x["weight"].sum()  # Proper weighted average
+                        })
+                    ).reset_index()
+                    
+                    df = df_grouped
+                    
+                    logging.info(f"✅ Berhasil membuat dataset interpolasi untuk {location} dengan {len(df)} data points")
+                    logging.info(f"📊 Temperature range: {df['y'].min():.1f}°C - {df['y'].max():.1f}°C")
+                    data = "interpolated"  # Flag untuk menandai data interpolasi
+
+    # Jika masih tidak ada data, fetch dari BMKG
     if not data:
         logging.info(f"⚠️ Tidak ada data untuk {location or 'semua lokasi'}, fetch ulang dari BMKG...")
-        df = fetch_weather_data()
-        save_weather_data(db, df)
+        df_fetch = fetch_weather_data()
+        save_weather_data(db, df_fetch)
         query = db.query(WeatherData)
         if location:
             query = query.filter(WeatherData.location_name == location)
         data = query.order_by(WeatherData.date).all()
 
-    df = pd.DataFrame([{"ds": d.date, "y": d.temperature} for d in data if d.temperature is not None])
+    # Convert to dataframe jika belum di-interpolasi
+    if data != "interpolated":
+        df = pd.DataFrame([{"ds": d.date, "y": d.temperature} for d in data if d.temperature is not None])
+    
     if df.empty:
         raise ValueError(f"❌ Tidak ada data historis untuk {location or 'semua lokasi'}.")
 
@@ -184,22 +256,28 @@ def predict_weather(db: Session, days_ahead: int = 3, location: str = None):
 
         results = forecast[["ds", "yhat", "yhat_lower", "yhat_upper"]].tail(days_ahead)
         preds = []
+        
+        # Tentukan source berdasarkan apakah data di-interpolasi atau tidak
+        is_interpolated = (data == "interpolated")
+        source_suffix = " (Interpolated)" if is_interpolated else ""
+        
         for _, row in results.iterrows():
             pred = WeatherPrediction(
                 date=row["ds"].date(),
                 predicted_temp=float(row["yhat"]),
                 lower_bound=float(row["yhat_lower"]),
                 upper_bound=float(row["yhat_upper"]),
-                source=f"Prophet ML Model - {location or 'Global'}"
+                source=f"Prophet ML{source_suffix} - {location or 'Global'}"
             )
             db.add(pred)
             preds.append(pred)
 
         db.commit()
-        logging.info(f"✅ Prophet sukses untuk {location or 'semua lokasi'}.")
+        logging.info(f"✅ Prophet sukses untuk {location or 'semua lokasi'}{source_suffix}.")
         return preds
 
     except Exception as e:
         logging.warning(f"⚠️ Prophet gagal ({e}), fallback ke SMA untuk {location or 'global'}")
+        traceback.print_exc()
         db.rollback()
         return predict_weather_simple(db, days_ahead, location)
