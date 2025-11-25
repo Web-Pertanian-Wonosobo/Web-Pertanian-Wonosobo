@@ -1,3 +1,4 @@
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "./ui/button";
 import {
   Sheet,
@@ -25,19 +26,24 @@ export function AdminNavigation({
   currentPage,
   onPageChange,
 }: AdminNavigationProps) {
+  const location = useLocation();
+  const navigate = useNavigate();
   const menuItems = [
-    { id: "admin-dashboard", label: "Dashboard Admin", icon: LayoutDashboard },
+    { id: "admin-dashboard", label: "Dashboard Admin", icon: LayoutDashboard, path: "/admin/dashboard" },
     {
-      id: "price-data-management",
+      id: "kelola-harga",
       label: "Kelola Data Harga",
       icon: DollarSign,
+      path: "/admin/kelola-harga"
     },
-    { id: "user-management", label: "Kelola User", icon: Users },
+    { id: "kelola-pengguna", label: "Kelola User", icon: Users, path: "/admin/kelola-pengguna" },
   ];
 
   const handleLogout = () => {
-    onPageChange("dashboard"); // Kembali ke halaman publik
-    // Logout logic akan ditangani di PageRouter
+    localStorage.removeItem("authUser");
+    localStorage.removeItem("authRole");
+    navigate("/dashboard");
+    window.location.reload(); // Reload to reset auth state
   };
 
   const NavContent = () => (
@@ -65,16 +71,17 @@ export function AdminNavigation({
         <div className="space-y-2">
           {menuItems.map((item) => {
             const Icon = item.icon;
+            const isActive = location.pathname === item.path;
             return (
-              <Button
-                key={item.id}
-                variant={currentPage === item.id ? "default" : "ghost"}
-                className="w-full justify-start"
-                onClick={() => onPageChange(item.id)}
-              >
-                <Icon className="w-4 h-4 mr-3" />
-                {item.label}
-              </Button>
+              <Link key={item.id} to={item.path}>
+                <Button
+                  variant={isActive ? "default" : "ghost"}
+                  className="w-full justify-start"
+                >
+                  <Icon className="w-4 h-4 mr-3" />
+                  {item.label}
+                </Button>
+              </Link>
             );
           })}
         </div>

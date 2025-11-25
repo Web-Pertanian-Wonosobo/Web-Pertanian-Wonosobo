@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { Button } from './ui/button';
 import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from './ui/sheet';
 import { 
@@ -18,11 +19,12 @@ interface PublicNavigationProps {
 }
 
 export function PublicNavigation({ currentPage, onPageChange, isLoggedIn }: PublicNavigationProps) {
+  const location = useLocation();
   const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: Home },
-    { id: 'weather', label: 'Prediksi Cuaca', icon: CloudRain },
-    { id: 'price-prediction', label: 'Prediksi Harga', icon: TrendingUp },
-    { id: 'slope-analysis', label: 'Analisis Lereng', icon: Mountain },
+    { id: 'dashboard', label: 'Dashboard', icon: Home, path: '/dashboard' },
+    { id: 'prediksi-cuaca', label: 'Prediksi Cuaca', icon: CloudRain, path: '/prediksi-cuaca' },
+    { id: 'prediksi-harga', label: 'Prediksi Harga', icon: TrendingUp, path: '/prediksi-harga' },
+    { id: 'analisis-lereng', label: 'Analisis Lereng', icon: Mountain, path: '/analisis-lereng' },
   ];
 
   const NavContent = () => (
@@ -50,30 +52,32 @@ export function PublicNavigation({ currentPage, onPageChange, isLoggedIn }: Publ
         <div className="space-y-2">
           {menuItems.map((item) => {
             const Icon = item.icon;
+            const isActive = location.pathname === item.path;
             return (
-              <Button
-                key={item.id}
-                variant={currentPage === item.id ? "default" : "ghost"}
-                className="w-full justify-start"
-                onClick={() => onPageChange(item.id)}
-              >
-                <Icon className="w-4 h-4 mr-3" />
-                {item.label}
-              </Button>
+              <Link key={item.id} to={item.path}>
+                <Button
+                  variant={isActive ? "default" : "ghost"}
+                  className="w-full justify-start"
+                >
+                  <Icon className="w-4 h-4 mr-3" />
+                  {item.label}
+                </Button>
+              </Link>
             );
           })}
         </div>
       </nav>
 
       <div className="p-4 border-t">
-        <Button 
-          variant="outline" 
-          className="w-full"
-          onClick={() => onPageChange('admin-login')}
-        >
-          <User className="w-4 h-4 mr-2" />
-          Login Admin
-        </Button>
+        <Link to="/admin/login">
+          <Button 
+            variant="outline" 
+            className="w-full"
+          >
+            <User className="w-4 h-4 mr-2" />
+            Login Admin
+          </Button>
+        </Link>
       </div>
     </>
   );
