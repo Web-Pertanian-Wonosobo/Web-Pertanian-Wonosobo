@@ -8,6 +8,7 @@ from apscheduler.triggers.interval import IntervalTrigger
 from datetime import datetime
 import logging
 from app.services.market_sync import fetch_and_save_market_data
+from app.db import SessionLocal
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -30,6 +31,29 @@ def sync_market_data_job():
         import traceback
         logger.error(f"Traceback: {traceback.format_exc()}")
 
+def sync_weather_data_job():
+    """
+    Job untuk sinkronisasi data cuaca dari BMKG
+    """
+    try:
+        logger.info(f"🌤️ Starting weather data sync at {datetime.now()}")
+        from app.services.ai_weather import fetch_weather_data, save_weather_data
+        
+        db = SessionLocal()
+        try:
+            df = fetch_weather_data()
+            if not df.empty:
+                records_saved = save_weather_data(db, df)  # Fix: db first, then df
+                logger.info(f"✅ Weather data sync completed: {records_saved} records saved")
+            else:
+                logger.warning("⚠️ No weather data received from BMKG")
+        finally:
+            db.close()
+    except Exception as e:
+        logger.error(f"❌ Weather data sync failed: {e}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
+
 def start_scheduler():
     """
     Memulai scheduler untuk auto-sync (default: 1 jam)
@@ -44,7 +68,7 @@ def start_scheduler_with_interval(hours=24):
         hours: Interval sync dalam jam (default: 24 jam / sekali sehari)
     """
     try:
-        # Add job untuk sync setiap X jam
+        # Add job untuk market data sync
         scheduler.add_job(
             func=sync_market_data_job,
             trigger=IntervalTrigger(hours=hours),
@@ -53,13 +77,23 @@ def start_scheduler_with_interval(hours=24):
             replace_existing=True
         )
         
+        # Add job untuk weather data sync (same interval)
+        scheduler.add_job(
+            func=sync_weather_data_job,
+            trigger=IntervalTrigger(hours=hours),
+            id='weather_sync_job',
+            name=f'Sync Weather Data from BMKG (every {hours}h)',
+            replace_existing=True
+        )
+        
         # Start scheduler
         scheduler.start()
         logger.info("✅ Scheduler started successfully")
-        logger.info(f"📅 Market data will sync every {hours} hour(s)")
+        logger.info(f"📅 Market & Weather data will sync every {hours} hour(s)")
         
         # Run once immediately on startup
         sync_market_data_job()
+        sync_weather_data_job()
         
     except Exception as e:
         logger.error(f"❌ Failed to start scheduler: {e}")

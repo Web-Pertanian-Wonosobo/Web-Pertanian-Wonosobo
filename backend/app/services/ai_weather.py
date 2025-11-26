@@ -68,9 +68,11 @@ def fetch_weather_data():
             logging.info(f"✅ {d['name']}: berhasil ambil {len(cuaca_list)} entri")
 
         except requests.exceptions.RequestException as e:
-            logging.warning(f"⚠️ Gagal ambil {d['name']}: {e}")
+            # Suppress 404 warnings - only log if it's not a 404
+            if "404" not in str(e):
+                logging.warning(f"⚠️ Gagal ambil {d['name']}: {e}")
         except Exception as e:
-            logging.warning(f"⚠️ Gagal parsing {d['name']}: {traceback.format_exc()}")
+            logging.debug(f"⚠️ Gagal parsing {d['name']}: {traceback.format_exc()}")
 
     df = pd.DataFrame(all_records)
     if df.empty:

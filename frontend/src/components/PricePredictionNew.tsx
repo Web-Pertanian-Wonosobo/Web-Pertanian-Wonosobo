@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -13,21 +13,29 @@ import {
 import { Badge } from "./ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import {
-  TrendingUp,
-  TrendingDown,
   Calculator,
   DollarSign,
   RefreshCw,
   AlertCircle,
 } from "lucide-react";
 import { toast } from "sonner";
-import { fetchAllKomoditas, type Komoditas } from "../services/komoditasApi";
+import {
+  fetchAllKomoditas,
+  type Komoditas,
+} from "../services/komoditasApi";
+import {
+  forecastCommodityPrice,
+  type ForecastResult,
+  formatDateID,
+} from "../services/forecastApi";
 
 export function PricePrediction() {
   const [selectedCommodity, setSelectedCommodity] = useState("");
   const [komoditasData, setKomoditasData] = useState<Komoditas[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState<string>("");
+  const [forecastData, setForecastData] = useState<ForecastResult | null>(null);
+  const [forecastLoading, setForecastLoading] = useState(false);
   const [simulationData, setSimulationData] = useState({
     harvestAmount: "",
     harvestDate: "",
@@ -44,12 +52,12 @@ export function PricePrediction() {
       if (result && result.length > 0) {
         setKomoditasData(result);
         setLastUpdate(new Date().toLocaleString("id-ID"));
-
+        
         // Set default commodity jika belum ada yang dipilih
         if (!selectedCommodity && result.length > 0) {
           setSelectedCommodity(result[0].nama || "");
         }
-
+        
         toast.success(`${result.length} data komoditas berhasil dimuat`);
       } else {
         setKomoditasData([]);
@@ -71,18 +79,18 @@ export function PricePrediction() {
     return () => clearInterval(interval);
   }, []);
 
-  // Get commodity names
-  const commodityNames = komoditasData
-    .map((k) => k.nama)
-    .filter((n): n is string => Boolean(n));
+  // Get commodity names (unique only)
+  const commodityNames = Array.from(
+    new Set(komoditasData.map(k => k.nama).filter((n): n is string => Boolean(n)))
+  );
 
   // Get current commodity data
   const getCurrentCommodityData = () => {
     if (!selectedCommodity || komoditasData.length === 0) return null;
-
-    const commodity = komoditasData.find((k) => k.nama === selectedCommodity);
+    
+    const commodity = komoditasData.find(k => k.nama === selectedCommodity);
     if (!commodity) return null;
-
+    
     return {
       name: commodity.nama || "Tidak diketahui",
       currentPrice: commodity.harga || 0,
@@ -107,33 +115,104 @@ export function PricePrediction() {
     market: "Wonosobo",
     commodity: item.nama || "Tidak diketahui",
     price: formatPrice(item.harga || 0),
-    updated: item.tanggal
-      ? new Date(item.tanggal).toLocaleDateString("id-ID", {
-          day: "numeric",
-          month: "short",
-          year: "numeric",
-        })
-      : "-",
+    updated: item.tanggal ? new Date(item.tanggal).toLocaleDateString("id-ID", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    }) : "-",
   }));
 
-  const calculateSimulation = () => {
+  const calculateSimulation = async () => {
     if (!simulationData.harvestAmount || !currentCommodityData) {
       toast.error("Pilih komoditas dan masukkan jumlah panen");
       return;
     }
 
-    const amount = parseFloat(simulationData.harvestAmount);
-    const estimatedPrice = currentCommodityData.currentPrice * 1.05; // Assume 5% price increase
-    const totalRevenue = amount * estimatedPrice;
+    if (!simulationData.harvestDate) {
+      toast.error("Pilih tanggal panen");
+      return;
+    }
 
-    setSimulationData((prev) => ({
-      ...prev,
-      estimatedPrice: estimatedPrice,
-      totalRevenue: totalRevenue,
-      bestSellDate: "5-10 Agustus 2025",
-    }));
+    setForecastLoading(true);
 
-    toast.success("Simulasi berhasil dihitung");
+    try {
+      // Calculate days until harvest
+      const harvestDate = new Date(simulationData.harvestDate);
+      const today = new Date();
+      const daysUntilHarvest = Math.ceil(
+        (harvestDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+      );
+
+      if (daysUntilHarvest < 0) {
+        toast.error("Tanggal panen tidak boleh di masa lalu");
+        setForecastLoading(false);
+        return;
+      }
+
+      if (daysUntilHarvest > 90) {
+        toast.error("Tanggal panen terlalu jauh (maksimal 90 hari)");
+        setForecastLoading(false);
+        return;
+      }
+
+      // Forecast using Prophet
+      const forecast = await forecastCommodityPrice(
+        currentCommodityData.name,
+        daysUntilHarvest + 5,
+        90
+      );
+
+      if (!forecast.success) {
+        toast.error(
+          forecast.message || "Gagal melakukan forecasting. Data historis mungkin tidak cukup."
+        );
+        setForecastLoading(false);
+        return;
+      }
+
+      setForecastData(forecast);
+
+      // Find prediction for harvest date
+      const harvestDateStr = simulationData.harvestDate;
+      const prediction = forecast.predictions.find(
+        (p) => p.date === harvestDateStr
+      );
+
+      let estimatedPrice = currentCommodityData.currentPrice;
+      let bestSellDate = "Segera";
+
+      if (prediction) {
+        estimatedPrice = prediction.predicted_price;
+      } else if (forecast.predictions.length > 0) {
+        // Use last prediction if exact date not found
+        estimatedPrice = forecast.predictions[forecast.predictions.length - 1].predicted_price;
+      }
+
+      // Get best selling date from forecast
+      if (forecast.best_selling_dates && forecast.best_selling_dates.length > 0) {
+        const bestDate = forecast.best_selling_dates[0];
+        bestSellDate = formatDateID(bestDate.date);
+      }
+
+      const amount = parseFloat(simulationData.harvestAmount);
+      const totalRevenue = amount * estimatedPrice;
+
+      setSimulationData((prev) => ({
+        ...prev,
+        estimatedPrice: estimatedPrice,
+        totalRevenue: totalRevenue,
+        bestSellDate: bestSellDate,
+      }));
+
+      toast.success("Prediksi berhasil dihitung dengan Prophet!");
+    } catch (error: any) {
+      console.error("Forecast error:", error);
+      toast.error(
+        error.message || "Gagal melakukan forecasting. Pastikan ada cukup data historis."
+      );
+    } finally {
+      setForecastLoading(false);
+    }
   };
 
   // Empty state jika tidak ada data
@@ -150,18 +229,14 @@ export function PricePrediction() {
         <Card>
           <CardContent className="py-12 text-center">
             <AlertCircle className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-xl font-semibold mb-2">
-              Belum Ada Data dari API
-            </h3>
+            <h3 className="text-xl font-semibold mb-2">Belum Ada Data dari API</h3>
             <p className="text-muted-foreground mb-6">
               Data harga komoditas dari API Disdagkopukm belum tersedia.
               <br />
               Silakan coba lagi nanti atau hubungi administrator.
             </p>
             <Button onClick={loadPrices} disabled={loading}>
-              <RefreshCw
-                className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`}
-              />
+              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
               Muat Ulang Data
             </Button>
           </CardContent>
@@ -176,14 +251,14 @@ export function PricePrediction() {
       <div className="p-6 max-w-8xl mx-auto">
         <div className="mb-6">
           <h1 className="text-3xl font-bold mb-2">Prediksi Harga Komoditas</h1>
-          <p className="text-muted-foreground">Memuat data komoditas...</p>
+          <p className="text-muted-foreground">
+            Memuat data komoditas...
+          </p>
         </div>
         <Card>
           <CardContent className="py-12 text-center">
             <RefreshCw className="h-12 w-12 mx-auto animate-spin text-muted-foreground mb-4" />
-            <p className="text-muted-foreground">
-              Memuat data harga komoditas...
-            </p>
+            <p className="text-muted-foreground">Memuat data harga komoditas...</p>
           </CardContent>
         </Card>
       </div>
@@ -205,9 +280,7 @@ export function PricePrediction() {
           )}
         </div>
         <Button onClick={loadPrices} disabled={loading} variant="outline">
-          <RefreshCw
-            className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`}
-          />
+          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
           Refresh
         </Button>
       </div>
@@ -227,8 +300,8 @@ export function PricePrediction() {
                     <SelectValue placeholder="Pilih komoditas" />
                   </SelectTrigger>
                   <SelectContent>
-                    {commodityNames.map((name) => (
-                      <SelectItem key={name} value={name}>
+                    {commodityNames.map((name, idx) => (
+                      <SelectItem key={`commodity-${idx}-${name}`} value={name}>
                         {name}
                       </SelectItem>
                     ))}
@@ -309,13 +382,22 @@ export function PricePrediction() {
                     }
                   />
                 </div>
-                <Button
-                  onClick={calculateSimulation}
-                  className="w-full"
-                  disabled={!currentCommodityData}
+                <Button 
+                  onClick={calculateSimulation} 
+                  className="w-full" 
+                  disabled={!currentCommodityData || forecastLoading}
                 >
-                  <Calculator className="h-4 w-4 mr-2" />
-                  Hitung Simulasi
+                  {forecastLoading ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                      Memprediksi dengan AI...
+                    </>
+                  ) : (
+                    <>
+                      <Calculator className="h-4 w-4 mr-2" />
+                      Prediksi dengan Prophet
+                    </>
+                  )}
                 </Button>
               </CardContent>
             </Card>
@@ -323,9 +405,16 @@ export function PricePrediction() {
             {/* Simulation Results */}
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center">
-                  <DollarSign className="h-5 w-5 mr-2" />
-                  Hasil Simulasi
+                <CardTitle className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <DollarSign className="h-5 w-5 mr-2" />
+                    Hasil Prediksi
+                  </div>
+                  {forecastData && (
+                    <Badge variant="outline" className="text-xs">
+                      Model: {forecastData.model}
+                    </Badge>
+                  )}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -374,9 +463,25 @@ export function PricePrediction() {
                         </p>
                       </div>
                     )}
-                    <div className="text-sm text-muted-foreground">
-                      <p>* Perhitungan berdasarkan harga pasar real-time</p>
-                      <p>* Belum termasuk biaya operasional</p>
+                    <div className="text-sm text-muted-foreground space-y-1">
+                      {forecastData ? (
+                        <>
+                          <p>* Prediksi menggunakan model {forecastData.model}</p>
+                          <p>* Berdasarkan {forecastData.historical_data_points} data historis</p>
+                          <p>* Akurasi: {forecastData.statistics.price_trend} {Math.abs(forecastData.statistics.trend_percentage).toFixed(1)}%</p>
+                          {forecastData.is_synthetic && (
+                            <p className="text-orange-600 font-medium">
+                              Î“ÃœÃ¡âˆ©â••Ã… Menggunakan data sintetis (data historis tidak cukup)
+                            </p>
+                          )}
+                          <p>* Belum termasuk biaya operasional</p>
+                        </>
+                      ) : (
+                        <>
+                          <p>* Perhitungan berdasarkan harga pasar real-time</p>
+                          <p>* Belum termasuk biaya operasional</p>
+                        </>
+                      )}
                     </div>
                   </>
                 ) : (
@@ -393,15 +498,11 @@ export function PricePrediction() {
           {currentCommodityData && (
             <Card className="mt-6">
               <CardHeader>
-                <CardTitle>
-                  Ringkasan Harga - {currentCommodityData.name}
-                </CardTitle>
+                <CardTitle>Ringkasan Harga - {currentCommodityData.name}</CardTitle>
               </CardHeader>
               <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="p-4 bg-slate-50 rounded-lg">
-                  <p className="text-sm text-muted-foreground">
-                    Harga Saat Ini
-                  </p>
+                  <p className="text-sm text-muted-foreground">Harga Saat Ini</p>
                   <p className="text-2xl font-bold">
                     {formatPrice(currentCommodityData.currentPrice)}
                   </p>
@@ -411,7 +512,9 @@ export function PricePrediction() {
                 </div>
                 <div className="p-4 bg-slate-50 rounded-lg">
                   <p className="text-sm text-muted-foreground">Lokasi Pasar</p>
-                  <p className="text-lg font-medium">Wonosobo</p>
+                  <p className="text-lg font-medium">
+                    Wonosobo
+                  </p>
                   <p className="text-xs text-muted-foreground mt-1">
                     Kategori: {currentCommodityData.category}
                   </p>
@@ -433,16 +536,14 @@ export function PricePrediction() {
         <TabsContent value="markets">
           <Card>
             <CardHeader>
-              <CardTitle>
-                Harga Pasar Real-time ({komoditasData.length} Data)
-              </CardTitle>
+              <CardTitle>Harga Pasar Real-time ({komoditasData.length} Data)</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
                 {marketInfo.length > 0 ? (
                   marketInfo.map((market, index) => (
                     <div
-                      key={index}
+                      key={`market-${index}-${market.commodity}-${market.updated}`}
                       className="flex items-center justify-between p-3 border rounded-lg hover:bg-slate-50 transition-colors"
                     >
                       <div>
@@ -455,9 +556,7 @@ export function PricePrediction() {
                         </p>
                       </div>
                       <div className="text-right">
-                        <p className="text-lg font-bold text-green-600">
-                          {market.price}
-                        </p>
+                        <p className="text-lg font-bold text-green-600">{market.price}</p>
                       </div>
                     </div>
                   ))
