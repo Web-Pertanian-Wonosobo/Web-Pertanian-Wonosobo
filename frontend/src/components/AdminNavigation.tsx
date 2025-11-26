@@ -17,15 +17,10 @@ import {
 } from "lucide-react";
 
 interface AdminNavigationProps {
-  currentPage: string;
-  onPageChange: (page: string) => void;
   isLoggedIn?: boolean;
 }
 
-export function AdminNavigation({
-  currentPage,
-  onPageChange,
-}: AdminNavigationProps) {
+export function AdminNavigation({}: AdminNavigationProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const menuItems = [

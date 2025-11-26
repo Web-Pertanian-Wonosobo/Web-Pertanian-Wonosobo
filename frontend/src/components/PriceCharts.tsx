@@ -60,7 +60,7 @@ export function PriceCharts() {
     setLoading(true);
     try {
       const data = await fetchAllKomoditas();
-      console.log("ðŸ“Š Loaded market data:", data.length, "records");
+      console.log("ðY“S Loaded market data:", data.length, "records");
       
       // Get unique commodities
       const uniqueCommodities = Array.from(

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
@@ -76,7 +76,7 @@ export function RealtimeMarketPrices() {
   const groupedPrices = groupPricesByCommodity(prices);
 
   // Get unique commodities
-  const commodities = Array.from(groupedPrices.keys());
+  const commodities = Array.from(groupedPrices.keys()) as string[];
 
   return (
     <div className="p-6 max-w-7xl mx-auto">

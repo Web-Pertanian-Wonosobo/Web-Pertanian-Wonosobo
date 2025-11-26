@@ -16,6 +16,9 @@ export interface WeatherData {
   rainfall: number;
   wind_speed: number;
   location_name: string;
+  is_interpolated?: boolean;
+  interpolation_sources?: string[];
+  interpolation_method?: string;
 }
 
 export interface PredictionResponse {

@@ -210,10 +210,10 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
 
   const getTrendIcon = (trend: string) => {
     switch (trend) {
-      case 'up': return '📈';
-      case 'down': return '📉';
-      case 'stable': return '➡️';
-      default: return '❓';
+      case 'up': return '';
+      case 'down': return '';
+      case 'stable': return '';
+      default: return '';
     }
   };
 

@@ -61,10 +61,10 @@ export function AdminDashboard({
   // Debug: Log setiap kali komoditasData berubah
   useEffect(() => {
     console.log(
-      "🔄 [AdminDashboard] komoditasData state updated:",
+      " [AdminDashboard] komoditasData state updated:",
       komoditasData
     );
-    console.log("🔄 [AdminDashboard] Length:", komoditasData.length);
+    console.log(" [AdminDashboard] Length:", komoditasData.length);
   }, [komoditasData]);
 
   // Fetch data from backend
@@ -73,8 +73,8 @@ export function AdminDashboard({
       try {
         // Fetch komoditas
         const komoditas = await fetchAllKomoditas();
-        console.log("🔍 [AdminDashboard] Komoditas yang diterima:", komoditas);
-        console.log("🔍 [AdminDashboard] Total items:", komoditas.length);
+        console.log(" [AdminDashboard] Komoditas yang diterima:", komoditas);
+        console.log(" [AdminDashboard] Total items:", komoditas.length);
         setKomoditasData(komoditas);
 
         // Fetch weather data
@@ -261,13 +261,13 @@ export function AdminDashboard({
   const getTrendIcon = (trend: string) => {
     switch (trend) {
       case "up":
-        return "📈";
+        return "";
       case "down":
-        return "📉";
+        return "";
       case "stable":
-        return "➡️";
+        return "";
       default:
-        return "❓";
+        return "";
     }
   };
 

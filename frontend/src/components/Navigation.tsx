@@ -97,7 +97,7 @@ export function Navigation({
       <header className="md:hidden flex items-center justify-between p-4 bg-card border-b">
         <div>
           <div className="flex items-center space-x-2">
-            <span className="text-xl">🌱</span>
+            <span className="text-xl"></span>
             <h1 className="text-xl font-bold text-primary">SiagaTani</h1>
           </div>
           <p className="text-sm text-muted-foreground">Wonosobo</p>
@@ -116,7 +116,7 @@ export function Navigation({
             </SheetDescription>
             <div className="mb-8 mt-6">
               <div className="flex items-center space-x-2 mb-2">
-                <span className="text-2xl">🌱</span>
+                <span className="text-2xl"></span>
                 <h1 className="text-2xl font-bold text-primary">SiagaTani</h1>
               </div>
               <p className="text-muted-foreground">

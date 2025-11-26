@@ -83,7 +83,7 @@
 //       const data = await fetchCurrentWeather();
 //       if (data && data.length > 0) {
 //         setWeatherData(data);
-//         console.log("✅ Weather data loaded:", data.length, "records");
+//         console.log(" Weather data loaded:", data.length, "records");
 //       } else {
 //         setError("Tidak ada data cuaca tersedia");
 //       }
@@ -202,7 +202,7 @@
 //                   <div className="text-center">
 //                     <div className="flex items-center justify-center gap-2">
 //                       <Thermometer className="h-5 w-5 text-orange-500" />
-//                       <span className="text-3xl font-bold">{avgTemp}°C</span>
+//                       <span className="text-3xl font-bold">{avgTemp} C</span>
 //                     </div>
 //                     <p className="text-sm text-muted-foreground mt-1">
 //                       {weatherDesc}
@@ -287,7 +287,7 @@
 //                   <div className="flex gap-4 items-center">
 //                     <div className="flex items-center gap-1">
 //                       <Thermometer className="h-4 w-4 text-orange-500" />
-//                       <span className="text-sm font-medium">{item.temperature}°C</span>
+//                       <span className="text-sm font-medium">{item.temperature} C</span>
 //                     </div>
 //                     <div className="flex items-center gap-1">
 //                       <Droplets className="h-4 w-4 text-blue-500" />
@@ -311,7 +311,7 @@
 
 //       {/* Attribution */}
 //       <div className="text-center text-sm text-muted-foreground p-4 bg-slate-50 rounded-lg">
-//         <p>📊 Data cuaca Kabupaten Wonosobo dari database sistem</p>
+//         <p> Data cuaca Kabupaten Wonosobo dari database sistem</p>
 //       </div>
 //     </div>
 //   );

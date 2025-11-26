@@ -1,4 +1,3 @@
-import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from './ui/button';
 import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from './ui/sheet';
@@ -12,13 +11,7 @@ import {
   User
 } from 'lucide-react';
 
-interface PublicNavigationProps {
-  currentPage: string;
-  onPageChange: (page: string) => void;
-  isLoggedIn?: boolean;
-}
-
-export function PublicNavigation({ currentPage, onPageChange, isLoggedIn }: PublicNavigationProps) {
+export function PublicNavigation() {
   const location = useLocation();
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Home, path: '/dashboard' },

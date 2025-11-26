@@ -57,7 +57,7 @@ export function PriceDataManagement() {
     try {
       setLoading(true);
       const data = await fetchPriceData(undefined, undefined, undefined, undefined, 500);
-      console.log("â‰¡Æ’Ã¶Ã¬ [PriceDataManagement] Data dari database:", data);
+      console.log("a‰¡Æ’A¶A¬ [PriceDataManagement] Data dari database:", data);
       
       // Convert ke format yang digunakan PriceDataManagement
       const converted = data.map((item) => ({
@@ -72,7 +72,7 @@ export function PriceDataManagement() {
       }));
       
       setPriceData(converted);
-      console.log("Î“Â£Ã  [PriceDataManagement] Data loaded:", converted.length, "records");
+      console.log("I“A£A  [PriceDataManagement] Data loaded:", converted.length, "records");
     } catch (error) {
       console.error("Error fetching price data:", error);
       toast.error("Gagal memuat data harga");

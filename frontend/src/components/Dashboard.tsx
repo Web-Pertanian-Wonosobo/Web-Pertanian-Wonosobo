@@ -47,19 +47,19 @@ export function Dashboard({ onNavigate }: DashboardProps) {
     const loadWilayah = async () => {
       setLoadingWilayah(true);
       try {
-        console.log("📍 Memuat data wilayah dari Disdukcapil...");
+        console.log("[WILAYAH] Memuat data wilayah dari Disdukcapil...");
         const data = await fetchWilayah();
-        console.log("✅ Data wilayah berhasil dimuat:", data.length, "total wilayah");
+        console.log("[WILAYAH] Data wilayah berhasil dimuat:", data.length, "total wilayah");
         
         // Filter hanya kecamatan (kode 6 digit), bukan desa/kelurahan
         const kecamatanOnly = data.filter(w => w.kode && w.kode.length === 6);
-        console.log("🔍 Filter kecamatan saja:", kecamatanOnly.length, "kecamatan");
-        console.log("📋 Daftar kecamatan:", kecamatanOnly.map(w => w.nama).join(", "));
+        console.log("[WILAYAH] Filter kecamatan saja:", kecamatanOnly.length, "kecamatan");
+        console.log("[WILAYAH] Daftar kecamatan:", kecamatanOnly.map(w => w.nama).join(", "));
         
         setWilayahData(kecamatanOnly);
-        console.log("💾 State wilayahData diupdate dengan", kecamatanOnly.length, "kecamatan");
+        console.log("[WILAYAH] State wilayahData diupdate dengan", kecamatanOnly.length, "kecamatan");
       } catch (error) {
-        console.error("❌ Gagal memuat data wilayah:", error);
+        console.error("[ERROR] Gagal memuat data wilayah:", error);
         setWilayahData([]);
       } finally {
         setLoadingWilayah(false);
@@ -78,7 +78,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
         if (!response.ok) throw new Error("Gagal mengambil data cuaca");
         const data = await response.json();
 
-        console.log("🌤️ Data cuaca dari backend BMKG:", data);
+        console.log("[WEATHER] Data cuaca dari backend BMKG:", data);
 
         const normalized = (data.data || []).map((item: any) => ({
           name: item.location_name || "Tidak diketahui",
@@ -88,10 +88,10 @@ export function Dashboard({ onNavigate }: DashboardProps) {
           hasData: true
         }));
 
-        console.log("✅ Data cuaca berhasil dimuat:", normalized.length, "kecamatan");
+        console.log("[WEATHER] Data cuaca berhasil dimuat:", normalized.length, "kecamatan");
         setWeatherData(normalized);
       } catch (error) {
-        console.error("❌ Gagal memuat data cuaca:", error);
+        console.error("[ERROR] Gagal memuat data cuaca:", error);
         setWeatherData([]);
       } finally {
         setLoadingWeather(false);
@@ -149,7 +149,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
           })
           .slice(0, 10);
 
-        console.log(`✅ Total unique commodities: ${allCommodities.length}, Menampilkan 10 terbaru`);
+        console.log(`[COMMODITY] Total unique commodities: ${allCommodities.length}, Menampilkan 10 terbaru`);
         setCommodityData(sortedCommodities);
       } catch (error) {
         console.error("Gagal memuat data komoditas:", error);

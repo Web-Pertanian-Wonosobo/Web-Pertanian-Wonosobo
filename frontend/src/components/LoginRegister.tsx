@@ -11,7 +11,7 @@ const BACKEND_API = "http://127.0.0.1:8000/auth";
 
 async function loginAdmin(credentials: { email: string; password: string }) {
   try {
-    console.log("🔐 Attempting login for:", credentials.email);
+    console.log(" Attempting login for:", credentials.email);
 
     const response = await fetch(`${BACKEND_API}/login`, {
       method: "POST",
@@ -22,24 +22,24 @@ async function loginAdmin(credentials: { email: string; password: string }) {
     });
 
     const data = await response.json();
-    console.log("📨 Backend response:", data);
+    console.log(" Backend response:", data);
 
     if (!response.ok) {
-      console.error("❌ HTTP error:", response.status, data);
+      console.error(" HTTP error:", response.status, data);
       throw new Error(data.detail || data.message || "Login gagal");
     }
 
     if (data.success === true && data.user) {
       localStorage.setItem("authUser", JSON.stringify(data.user));
       localStorage.setItem("authRole", data.user.role);
-      console.log("✅ Login berhasil! User saved to localStorage:", data.user);
+      console.log(" Login berhasil! User saved to localStorage:", data.user);
     } else {
-      console.warn("⚠️ Login gagal:", data.message);
+      console.warn(" Login gagal:", data.message);
     }
 
     return data;
   } catch (error: any) {
-    console.error("❌ Login API error:", error);
+    console.error(" Login API error:", error);
     throw error;
   }
 }
@@ -69,7 +69,7 @@ export function LoginRegister({ onLogin }: LoginRegisterProps) {
       const password = loginData.password;
 
       console.log("========================================");
-      console.log("📤 LOGIN ATTEMPT");
+      console.log(" LOGIN ATTEMPT");
       console.log("Email:", email);
       console.log("Password:", password);
       console.log("========================================");
@@ -78,7 +78,7 @@ export function LoginRegister({ onLogin }: LoginRegisterProps) {
       const response = await loginAdmin({ email, password });
 
       console.log("========================================");
-      console.log("📥 BACKEND RESPONSE");
+      console.log(" BACKEND RESPONSE");
       console.log("Full response:", JSON.stringify(response, null, 2));
       console.log("response.success:", response.success);
       console.log("response.success === true:", response.success === true);
@@ -87,35 +87,35 @@ export function LoginRegister({ onLogin }: LoginRegisterProps) {
 
       // CEK RESPONSE - hanya redirect jika success === true DAN user exists
       if (response.success === true && response.user) {
-        console.log("✅✅✅ KONDISI SUCCESS TERPENUHI - AKAN REDIRECT");
-        toast.success(`Selamat datang, ${response.user.name}! 🎉`);
+        console.log(" KONDISI SUCCESS TERPENUHI - AKAN REDIRECT");
+        toast.success(`Selamat datang, ${response.user.name}! `);
 
         // Hanya admin yang bisa login
         if (response.user.role === "admin") {
-          console.log("🔐 Redirecting to ADMIN dashboard");
+          console.log(" Redirecting to ADMIN dashboard");
           onLogin("admin");
         } else {
           // Bukan admin, tolak
-          console.log("❌ User bukan admin, login ditolak");
+          console.log(" User bukan admin, login ditolak");
           toast.error("Hanya admin yang bisa login!");
         }
       } else {
         // Login GAGAL - success === false
-        console.log("❌❌❌ KONDISI SUCCESS TIDAK TERPENUHI - TIDAK REDIRECT");
+        console.log(" KONDISI SUCCESS TIDAK TERPENUHI - TIDAK REDIRECT");
         console.log(
           "Reason: success =",
           response.success,
           ", user =",
           response.user
         );
-        toast.error(response.message || "Email atau password salah! ❌");
+        toast.error(response.message || "Email atau password salah! ");
         // JANGAN panggil onLogin() - STAY DI LOGIN PAGE
       }
     } catch (error: any) {
       // Error dari network atau server crash
-      console.log("🔥🔥🔥 EXCEPTION CAUGHT");
+      console.log(" EXCEPTION CAUGHT");
       console.error("Error:", error);
-      toast.error(error.message || "Gagal terhubung ke server! ⚠️");
+      toast.error(error.message || "Gagal terhubung ke server! ");
     } finally {
       setIsLoading(false);
       console.log("========================================");
@@ -128,7 +128,7 @@ export function LoginRegister({ onLogin }: LoginRegisterProps) {
         {/* Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
-            <span className="text-2xl">🌱</span>
+            <span className="text-2xl"></span>
           </div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
             EcoScope Banyumas

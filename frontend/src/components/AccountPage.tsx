@@ -30,7 +30,7 @@ export function AccountPage({ onLogout, onNavigate }: AccountPageProps) {
             <div className="space-y-4">
               <div className="flex items-center space-x-4">
                 <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
-                  <span className="text-2xl">👨‍🌾</span>
+                  <span className="text-2xl"></span>
                 </div>
                 <div>
                   <h3 className="font-medium">Hamka</h3>

@@ -167,20 +167,20 @@ export function SlopeAnalysis() {
       return;
     }
 
-    const alertMessage = `🚨 PERINGATAN POTENSI LONGSOR 🚨
+    const alertMessage = ` PERINGATAN POTENSI LONGSOR 
 
-📍 Lokasi: ${selectedLocation.name}
-📊 Tingkat Kemiringan: ${selectedLocation.slope}%
-⚠️ Status Risiko: ${getRiskLabel(selectedLocation.risk).toUpperCase()}
-🕐 Waktu: ${new Date().toLocaleString("id-ID")}
+[LOCATION] Lokasi: ${selectedLocation.name}
+ Tingkat Kemiringan: ${selectedLocation.slope}%
+[WARNING] Status Risiko: ${getRiskLabel(selectedLocation.risk).toUpperCase()}
+ Waktu: ${new Date().toLocaleString("id-ID")}
 
 ${
   selectedLocation.risk === "high"
-    ? "⛔ SEGERA HINDARI AREA INI!"
-    : "⚠️ TETAP WASPADA!"
+    ? " SEGERA HINDARI AREA INI!"
+    : "[WARNING] TETAP WASPADA!"
 }
 
-📋 Saran:
+[INFO] Saran:
 ${selectedLocation.suggestions.map((s: string) => `• ${s}`).join("\n")}
 
 #BanyumasAlert #SiagaBencana
@@ -483,7 +483,7 @@ ${new Date().toLocaleString("id-ID")}`;
                         {selectedLocation.slope}%
                         {selectedLocation.slopeDegrees && (
                           <span className="text-xs text-muted-foreground ml-1">
-                            ({selectedLocation.slopeDegrees}°)
+                            ({selectedLocation.slopeDegrees} deg)
                           </span>
                         )}
                       </p>

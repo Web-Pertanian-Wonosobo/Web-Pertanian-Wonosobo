@@ -238,6 +238,9 @@ export function WeatherPrediction() {
     ? (todayWeather.reduce((sum, w) => sum + (w.humidity || 0), 0) / todayWeather.length).toFixed(1)
     : "-";
 
+  // Safely access optional interpolation fields that may not be present on WeatherData
+  const firstWeather = todayWeather.length > 0 ? (todayWeather[0] as any) : null;
+
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <h1 className="text-3xl font-bold mb-2">Prediksi Cuaca</h1>
@@ -248,7 +251,7 @@ export function WeatherPrediction() {
       {/* === Dropdown Lokasi (otomatis dari backend) === */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 bg-gray-50 p-4 rounded-lg">
         <div className="flex items-center gap-2 mb-2 md:mb-0">
-          <span className="font-medium text-gray-600">📍 Pilih Lokasi:</span>
+          <span className="font-medium text-gray-600"> Pilih Lokasi:</span>
           <span className="font-bold text-lg text-blue-600">{selectedLocation}</span>
         </div>
 
@@ -283,9 +286,9 @@ export function WeatherPrediction() {
                   <Sun className="h-5 w-5 text-yellow-500" />
                   Ringkasan Cuaca Hari Ini ({selectedLocation})
                 </div>
-                {todayWeather.length > 0 && todayWeather[0].is_interpolated && (
+                {firstWeather?.is_interpolated && (
                   <Badge variant="outline" className="text-xs bg-blue-50">
-                    📋 Data Estimasi
+                    [ESTIMASI] Data Estimasi
                   </Badge>
                 )}
               </CardTitle>
@@ -317,15 +320,15 @@ export function WeatherPrediction() {
                       </Badge>
                     </div>
                   </div>
-                  {todayWeather.length > 0 && todayWeather[0].is_interpolated && (
+                  {firstWeather?.is_interpolated && (
                     <div className="mt-4 p-3 bg-blue-50 rounded-lg text-sm text-blue-800">
-                      <p className="font-medium">📋 Data Estimasi (Interpolasi)</p>
+                      <p className="font-medium">[INFO] Data Estimasi (Interpolasi)</p>
                       <p className="text-xs mt-1">
                         Data cuaca untuk {selectedLocation} diestimasi dari kecamatan terdekat:{" "}
-                        {todayWeather[0].interpolation_sources?.join(", ") || "N/A"}
+                        {firstWeather?.interpolation_sources?.join(", ") || "N/A"}
                       </p>
                       <p className="text-xs mt-1">
-                        Metode: {todayWeather[0].interpolation_method || "IDW"}
+                        Metode: {firstWeather?.interpolation_method || "IDW"}
                       </p>
                     </div>
                   )}
@@ -483,7 +486,7 @@ export function WeatherPrediction() {
                                 <h3 className="font-medium">{dayName}</h3>
                                 {isInterpolated && index === 0 && (
                                   <Badge variant="outline" className="text-xs bg-blue-50">
-                                    â‰¡Æ’Ã´Ã¬
+                                    Estimasi
                                   </Badge>
                                 )}
                               </div>
@@ -508,7 +511,7 @@ export function WeatherPrediction() {
                   {/* Info jika data interpolasi */}
                   {backendPredictions.length > 0 && backendPredictions[0].source?.includes("Interpolated") && (
                     <div className="mb-4 p-3 bg-blue-50 rounded-lg text-sm text-blue-800">
-                      <p className="font-medium">Î“Ã¤â•£âˆ©â••Ã… Prediksi dari Data Estimasi (Interpolasi)</p>
+                      <p className="font-medium"> Prediksi dari Data Estimasi (Interpolasi)</p>
                       <p className="text-xs mt-1">
                         Prediksi cuaca untuk {selectedLocation} menggunakan data estimasi dari kecamatan terdekat.
                         Akurasi prediksi: 95-98% (sangat reliable untuk perencanaan pertanian).

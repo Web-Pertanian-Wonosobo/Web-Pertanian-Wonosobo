@@ -88,7 +88,7 @@ export function EditProfile({ onBack }: EditProfileProps) {
           <CardContent className="text-center space-y-4">
             <Avatar className="w-32 h-32 mx-auto">
               <AvatarImage src="" alt="Profile" />
-              <AvatarFallback className="text-4xl">👨‍🌾</AvatarFallback>
+              <AvatarFallback className="text-4xl"></AvatarFallback>
             </Avatar>
             <Button
               variant="outline"
@@ -246,7 +246,7 @@ export function EditProfile({ onBack }: EditProfileProps) {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center">
-                🌾 Informasi Pertanian
+                 Informasi Pertanian
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">

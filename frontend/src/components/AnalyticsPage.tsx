@@ -56,7 +56,7 @@ const COLORS = [
   "#82CA9D",
 ];
 
-export function AnalyticsPage({ _onNavigate }: AnalyticsPageProps) {
+export function AnalyticsPage({ onNavigate }: AnalyticsPageProps) {
   return (
     <div className="p-6 max-w-8xl mx-auto">
       <div className="mb-6">

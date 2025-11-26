@@ -79,8 +79,6 @@ export default function App() {
   return (
     <div className="min-h-screen bg-background flex">
       <NavigationComponent
-        currentPage={location.pathname}
-        onPageChange={(path) => navigate(path)}
         isLoggedIn={isLoggedIn}
       />
 
