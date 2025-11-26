@@ -57,7 +57,6 @@ export function AdminDashboard({
   const [komoditasData, setKomoditasData] = useState<Komoditas[]>([]);
   const [weatherData, setWeatherData] = useState<any[]>([]);
   const [_loading, setLoading] = useState(true);
-
   // Debug: Log setiap kali komoditasData berubah
   useEffect(() => {
     console.log(
@@ -66,7 +65,7 @@ export function AdminDashboard({
     );
     console.log("🔄 [AdminDashboard] Length:", komoditasData.length);
   }, [komoditasData]);
-
+  
   // Fetch data from backend
   useEffect(() => {
     const fetchData = async () => {

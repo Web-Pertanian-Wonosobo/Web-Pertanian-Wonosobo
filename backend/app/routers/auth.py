@@ -10,7 +10,7 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 def hash_password(password: str) -> str:
     """Hash password menggunakan SHA256"""
-    return hashlib.sha256(password.encode()).hexdigest()
+    return hashlib.(password.encode()).hexdigest()
 
 @router.post("/login", response_model=LoginResponse)
 async def login(credentials: LoginRequest, db: Session = Depends(get_db)):
