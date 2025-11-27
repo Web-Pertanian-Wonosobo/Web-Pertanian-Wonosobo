@@ -90,10 +90,11 @@ def get_market_prices(
     location: Optional[str] = Query(None, description="Filter berdasarkan lokasi pasar"),
     start_date: Optional[date] = Query(None, description="Filter tanggal mulai"),
     end_date: Optional[date] = Query(None, description="Filter tanggal akhir"),
-    limit: int = Query(100, description="Jumlah data maksimal")
+    limit: Optional[int] = Query(None, description="Jumlah data maksimal (kosongkan untuk ambil semua)")
 ):
     """
     Mengambil data harga dari database lokal dengan filter.
+    Jika limit=None atau tidak diisi, akan mengambil semua data.
     """
     try:
         query = db.query(MarketPrice)
@@ -111,7 +112,12 @@ def get_market_prices(
             query = query.filter(MarketPrice.date <= end_date)
         
         query = query.order_by(MarketPrice.date.desc())
-        prices = query.limit(limit).all()
+        
+        # Jika limit tidak diisi, ambil semua data
+        if limit is not None and limit > 0:
+            prices = query.limit(limit).all()
+        else:
+            prices = query.all()
         
         return {
             "success": True,

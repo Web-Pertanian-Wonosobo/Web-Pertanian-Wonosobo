@@ -157,8 +157,9 @@ export const normalizeFromDatabase = (item: any): Komoditas => {
 export const fetchKomoditas = async (): Promise<Komoditas[]> => {
   try {
     // Ambil dari database backend (data sudah di-sync otomatis tiap 1 jam)
+    // Tidak menggunakan limit parameter = ambil semua data
     const endpoint = USE_DATABASE 
-      ? `${BACKEND_API}/list?limit=100`
+      ? `${BACKEND_API}/list`
       : `${BACKEND_API}/realtime/produk-komoditas`;
     
     console.log(`📡 Fetching komoditas from: ${endpoint}`);

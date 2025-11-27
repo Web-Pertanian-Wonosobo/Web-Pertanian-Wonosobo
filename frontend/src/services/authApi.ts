@@ -21,7 +21,6 @@ interface LoginResponse {
 
 export async function loginAdmin(credentials: LoginCredentials): Promise<LoginResponse> {
   try {
-    console.log("🔐 Attempting login for:", credentials.email);
     
     const response = await fetch(`${BACKEND_API}/login`, {
       method: "POST",
@@ -51,7 +50,7 @@ export async function loginAdmin(credentials: LoginCredentials): Promise<LoginRe
       // JANGAN simpan ke localStorage
       // JANGAN throw error, biarkan LoginRegister.tsx yang handle
     }
-
+    
     return data;
   } catch (error: any) {
     console.error("❌ Login API error:", error);

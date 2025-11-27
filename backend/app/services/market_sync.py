@@ -1,9 +1,12 @@
-import requests
+﻿import requests
 from sqlalchemy.orm import Session
 from datetime import datetime, date
 from typing import List, Dict, Optional
 from app.db import SessionLocal
 from app.models.market_model import MarketPrice
+import logging
+
+logger = logging.getLogger(__name__)
 
 # URL API dari Disdagkopukm Wonosobo
 BASE_URL = "https://disdagkopukm.wonosobokab.go.id/api"
@@ -17,7 +20,7 @@ def fetch_realtime_komoditas() -> List[Dict]:
         response.raise_for_status()
         return response.json()
     except Exception as e:
-        print(f"❌ Error fetching komoditas: {e}")
+        logger.error(f"[ERROR] Error fetching komoditas: {e}")
         return []
 
 def fetch_realtime_produk_komoditas() -> List[Dict]:
@@ -41,7 +44,7 @@ def fetch_realtime_produk_komoditas() -> List[Dict]:
         
         return []
     except Exception as e:
-        print(f"❌ Error fetching produk-komoditas: {e}")
+        logger.error(f"[ERROR] Error fetching produk-komoditas: {e}")
         return []
 
 def fetch_realtime_produk() -> List[Dict]:
@@ -53,7 +56,7 @@ def fetch_realtime_produk() -> List[Dict]:
         response.raise_for_status()
         return response.json()
     except Exception as e:
-        print(f"❌ Error fetching produk: {e}")
+        logger.error(f"[ERROR] Error fetching produk: {e}")
         return []
 
 def get_realtime_market_prices() -> Dict:
@@ -66,7 +69,7 @@ def get_realtime_market_prices() -> Dict:
         
         # Fetch dari produk-komoditas (endpoint utama dengan harga)
         produk_komoditas = fetch_realtime_produk_komoditas()
-        print(f"📦 Fetched {len(produk_komoditas)} items from produk-komoditas")
+        logger.info(f"[MARKET] Fetched {len(produk_komoditas)} items from produk-komoditas")
         
         for item in produk_komoditas:
             # Extract nama dari nested object produk.name
@@ -98,7 +101,7 @@ def get_realtime_market_prices() -> Dict:
                 "source": "produk-komoditas"
             }
             all_prices.append(price_data)
-            print(f"  ✓ Added: {nama} - Rp {harga}")
+            logger.info(f"  [MARKET] Added: {nama} - Rp {harga}")
         
         return {
             "success": True,
@@ -108,7 +111,7 @@ def get_realtime_market_prices() -> Dict:
         }
     
     except Exception as e:
-        print(f"❌ Error getting realtime prices: {e}")
+        logger.error(f"[ERROR] Error getting realtime prices: {e}")
         return {
             "success": False,
             "error": str(e),
@@ -154,7 +157,7 @@ def fetch_and_save_market_data():
         realtime_data = get_realtime_market_prices()
         
         if not realtime_data.get("success") or not realtime_data.get("data"):
-            print("⚠️ Tidak ada data dari API Disdagkopukm.")
+            logger.warning("[WARNING] Tidak ada data dari API Disdagkopukm.")
             return {"message": "Tidak ada data yang diterima."}
 
         db: Session = SessionLocal()
@@ -190,16 +193,16 @@ def fetch_and_save_market_data():
         db.commit()
         db.close()
 
-        print(f"✅ {count} data baru berhasil disimpan dari API Disdagkopukm.")
+        logger.info(f"[MARKET] {count} data baru berhasil disimpan dari API Disdagkopukm.")
         return {
             "message": f"{count} data berhasil disimpan ke database.",
             "total_fetched": realtime_data["total"]
         }
 
     except requests.exceptions.RequestException as e:
-        print(f"❌ Gagal menghubungi API Disdagkopukm: {e}")
+        logger.error(f"[ERROR] Gagal menghubungi API Disdagkopukm: {e}")
         return {"error": f"Gagal menghubungi API: {e}"}
 
     except Exception as e:
-        print(f"❌ Gagal sinkronisasi data: {e}")
+        logger.error(f"[ERROR] Gagal sinkronisasi data: {e}")
         return {"error": str(e)}
