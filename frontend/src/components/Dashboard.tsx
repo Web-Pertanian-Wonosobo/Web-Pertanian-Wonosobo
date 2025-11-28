@@ -78,7 +78,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
         if (!response.ok) throw new Error("Gagal mengambil data cuaca");
         const data = await response.json();
 
-        console.log("[WEATHER] Data cuaca dari backend BMKG:", data);
+        console.log("[WEATHER] Data cuaca dari backend OpenWeather:", data);
 
         const normalized = (data.data || []).map((item: any) => ({
           name: item.location_name || "Tidak diketahui",
@@ -321,7 +321,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
                 ))}
               </div>
               <div className="mt-4 pt-4 border-t text-sm text-gray-500 text-center">
-                Data cuaca real-time dari BMKG. Klik "Lihat Semua" untuk prediksi lengkap.
+                Data cuaca real-time dari OpenWeather. Klik "Lihat Semua" untuk prediksi lengkap.
               </div>
             </>
           ) : (

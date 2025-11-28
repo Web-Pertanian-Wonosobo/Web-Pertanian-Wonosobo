@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 import logging
 import numpy as np
 import traceback
+import os
 
 from app.models.weather_model import WeatherData, WeatherPrediction
 
@@ -18,65 +19,78 @@ except Exception:
     logging.info("ℹ️ Prophet not available. Using Simple Moving Average fallback.")
 
 
-# 🌦 Daftar kecamatan di Wonosobo (kode adm4 BMKG)
+# 🌦 Daftar kecamatan di Wonosobo (koordinat untuk OpenWeather API)
 DISTRICTS = [
-    {"name": "Wadaslintang", "adm4": "33.07.01.2001"},
-    {"name": "Kalikajar", "adm4": "33.07.02.1001"},
-    {"name": "Wonosobo Kota", "adm4": "33.07.03.1001"},
-    {"name": "Leksono", "adm4": "33.07.04.1001"},
-    {"name": "Kertek", "adm4": "33.07.05.1001"},
-    {"name": "Garung", "adm4": "33.07.06.1001"},
-    {"name": "Kaliwiro", "adm4": "33.07.07.1001"},
-    {"name": "Kalibawang", "adm4": "33.07.08.1001"},
-    {"name": "Selomerto", "adm4": "33.07.09.1001"},
-    {"name": "Kejajar", "adm4": "33.07.10.1001"},
-    {"name": "Mojotengah", "adm4": "33.07.11.1001"},
+    {"name": "Wadaslintang", "lat": -7.5167, "lon": 109.9167},
+    {"name": "Kalikajar", "lat": -7.3833, "lon": 109.7500},
+    {"name": "Wonosobo Kota", "lat": -7.3667, "lon": 109.9000},
+    {"name": "Leksono", "lat": -7.3833, "lon": 109.8500},
+    {"name": "Kertek", "lat": -7.4167, "lon": 109.8833},
+    {"name": "Garung", "lat": -7.4500, "lon": 109.8667},
+    {"name": "Kaliwiro", "lat": -7.4333, "lon": 109.8167},
+    {"name": "Kalibawang", "lat": -7.4833, "lon": 109.8833},
+    {"name": "Selomerto", "lat": -7.4667, "lon": 109.9167},
+    {"name": "Kejajar", "lat": -7.3500, "lon": 109.8000},
+    {"name": "Mojotengah", "lat": -7.4000, "lon": 109.9500},
 ]
 
 
-# === 1️⃣ Ambil data cuaca dari semua kecamatan yang valid ===
+# === 1️⃣ Ambil data cuaca dari OpenWeather API ===
 def fetch_weather_data():
     all_records = []
+    api_key = os.getenv("OPENWEATHER_API_KEY")
+    base_url = os.getenv("OPENWEATHER_BASE_URL", "https://api.openweathermap.org/data/2.5")
+    
+    if not api_key:
+        raise ValueError("❌ OPENWEATHER_API_KEY tidak ditemukan di environment variables")
 
     for d in DISTRICTS:
         try:
-            url = f"https://api.bmkg.go.id/publik/prakiraan-cuaca?adm4={d['adm4']}"
-            res = requests.get(url, timeout=10)
-            res.raise_for_status()
-            data = res.json()
+            # Current weather
+            current_url = f"{base_url}/weather?lat={d['lat']}&lon={d['lon']}&appid={api_key}&units=metric"
+            current_res = requests.get(current_url, timeout=10)
+            current_res.raise_for_status()
+            current_data = current_res.json()
+            
+            # Add current weather record
+            current_record = {
+                "ds": datetime.now(),
+                "temperature": float(current_data["main"]["temp"]),
+                "humidity": float(current_data["main"]["humidity"]),
+                "rainfall": float(current_data.get("rain", {}).get("1h", 0)),
+                "wind_speed": float(current_data["wind"]["speed"]) * 3.6,  # Convert m/s to km/h
+                "location": d["name"]
+            }
+            all_records.append(current_record)
+            
+            # 5-day forecast
+            forecast_url = f"{base_url}/forecast?lat={d['lat']}&lon={d['lon']}&appid={api_key}&units=metric"
+            forecast_res = requests.get(forecast_url, timeout=10)
+            forecast_res.raise_for_status()
+            forecast_data = forecast_res.json()
+            
+            # Process forecast data (every 3 hours for 5 days)
+            for forecast in forecast_data.get("list", []):
+                forecast_record = {
+                    "ds": datetime.fromtimestamp(forecast["dt"]),
+                    "temperature": float(forecast["main"]["temp"]),
+                    "humidity": float(forecast["main"]["humidity"]),
+                    "rainfall": float(forecast.get("rain", {}).get("3h", 0)),
+                    "wind_speed": float(forecast["wind"]["speed"]) * 3.6,  # Convert m/s to km/h
+                    "location": d["name"]
+                }
+                all_records.append(forecast_record)
 
-            cuaca_list = []
-            for item in data.get("data", []):
-                if "cuaca" in item:
-                    cuaca_list.extend(item["cuaca"])
-
-            if not cuaca_list:
-                logging.warning(f"⚠️ Tidak ada data untuk {d['name']}")
-                continue
-
-            for fset in cuaca_list:
-                for f in fset:
-                    all_records.append({
-                        "ds": f.get("datetime"),
-                        "temperature": float(f.get("t", 0)),
-                        "humidity": float(f.get("hu", 0)),
-                        "rainfall": float(f.get("tp", 0)),
-                        "wind_speed": float(f.get("ws", 0)),
-                        "location": d["name"]
-                    })
-
-            logging.info(f"✅ {d['name']}: berhasil ambil {len(cuaca_list)} entri")
+            logging.info(f"✅ {d['name']}: berhasil ambil data dari OpenWeather")
 
         except requests.exceptions.RequestException as e:
-            # Suppress 404 warnings - only log if it's not a 404
-            if "404" not in str(e):
-                logging.warning(f"⚠️ Gagal ambil {d['name']}: {e}")
+            logging.warning(f"⚠️ Gagal ambil {d['name']}: {e}")
         except Exception as e:
             logging.debug(f"⚠️ Gagal parsing {d['name']}: {traceback.format_exc()}")
 
     df = pd.DataFrame(all_records)
     if df.empty:
-        raise ValueError("❌ Tidak ada data BMKG yang berhasil diambil.")
+        raise ValueError("❌ Tidak ada data OpenWeather yang berhasil diambil.")
 
     df["ds"] = pd.to_datetime(df["ds"], errors="coerce")
     df = df.dropna(subset=["ds", "temperature"])
@@ -90,7 +104,7 @@ def save_weather_data(db: Session, df: pd.DataFrame):
         try:
             record = WeatherData(
                 date=row["ds"].date(),
-                location_name=row.get("location", "BMKG"),
+                location_name=row.get("location", "OpenWeather"),
                 temperature=row.get("temperature"),
                 humidity=row.get("humidity"),
                 rainfall=row.get("rainfall"),
@@ -102,7 +116,7 @@ def save_weather_data(db: Session, df: pd.DataFrame):
             logging.warning(f"⚠️ Gagal simpan record: {e}")
 
     db.commit()
-    logging.info(f"✅ Berhasil simpan {saved} data dari {df['location'].nunique()} kecamatan.")
+    logging.info(f"✅ Berhasil simpan {saved} data dari {df['location'].nunique()} kecamatan (OpenWeather).")
 
 
 # === 3️⃣ Fallback prediksi sederhana (SMA) ===
@@ -115,7 +129,7 @@ def predict_weather_simple(db: Session, days_ahead: int = 3, location: str = Non
     data = query.order_by(WeatherData.date).all()
 
     if not data:
-        logging.info("⚠️ Tidak ada data di DB, mengambil dari BMKG...")
+        logging.info("⚠️ Tidak ada data di DB, mengambil dari OpenWeather...")
         df = fetch_weather_data()
         save_weather_data(db, df)
         query = db.query(WeatherData)
@@ -229,9 +243,9 @@ def predict_weather(db: Session, days_ahead: int = 3, location: str = None):
                     logging.info(f"📊 Temperature range: {df['y'].min():.1f}°C - {df['y'].max():.1f}°C")
                     data = "interpolated"  # Flag untuk menandai data interpolasi
 
-    # Jika masih tidak ada data, fetch dari BMKG
+    # Jika masih tidak ada data, fetch dari OpenWeather
     if not data:
-        logging.info(f"⚠️ Tidak ada data untuk {location or 'semua lokasi'}, fetch ulang dari BMKG...")
+        logging.info(f"⚠️ Tidak ada data untuk {location or 'semua lokasi'}, fetch ulang dari OpenWeather...")
         df_fetch = fetch_weather_data()
         save_weather_data(db, df_fetch)
         query = db.query(WeatherData)
@@ -269,7 +283,7 @@ def predict_weather(db: Session, days_ahead: int = 3, location: str = None):
                 predicted_temp=float(row["yhat"]),
                 lower_bound=float(row["yhat_lower"]),
                 upper_bound=float(row["yhat_upper"]),
-                source=f"Prophet ML{source_suffix} - {location or 'Global'}"
+                source=f"Prophet ML (OpenWeather){source_suffix} - {location or 'Global'}"
             )
             db.add(pred)
             preds.append(pred)

@@ -33,10 +33,10 @@ def sync_market_data_job():
 
 def sync_weather_data_job():
     """
-    Job untuk sinkronisasi data cuaca dari BMKG
+    Job untuk sinkronisasi data cuaca dari OpenWeather API
     """
     try:
-        logger.info(f"🌤️ Starting weather data sync at {datetime.now()}")
+        logger.info(f"🌤️ Starting weather data sync (OpenWeather) at {datetime.now()}")
         from app.services.ai_weather import fetch_weather_data, save_weather_data
         
         db = SessionLocal()
@@ -44,13 +44,13 @@ def sync_weather_data_job():
             df = fetch_weather_data()
             if not df.empty:
                 records_saved = save_weather_data(db, df)  # Fix: db first, then df
-                logger.info(f"✅ Weather data sync completed: {records_saved} records saved")
+                logger.info(f"✅ OpenWeather data sync completed: {records_saved} records saved")
             else:
-                logger.warning("⚠️ No weather data received from BMKG")
+                logger.warning("⚠️ No weather data received from OpenWeather")
         finally:
             db.close()
     except Exception as e:
-        logger.error(f"❌ Weather data sync failed: {e}")
+        logger.error(f"❌ OpenWeather data sync failed: {e}")
         import traceback
         logger.error(f"Traceback: {traceback.format_exc()}")
 
@@ -82,7 +82,7 @@ def start_scheduler_with_interval(hours=24):
             func=sync_weather_data_job,
             trigger=IntervalTrigger(hours=hours),
             id='weather_sync_job',
-            name=f'Sync Weather Data from BMKG (every {hours}h)',
+            name=f'Sync Weather Data from OpenWeather (every {hours}h)',
             replace_existing=True
         )
         

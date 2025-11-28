@@ -52,7 +52,7 @@ def get_current_weather(
 ):
     """
     Ambil data cuaca untuk semua kecamatan (HARI INI).
-    - Jika ada data BMKG: gunakan data real
+    - Jika ada data OpenWeather: gunakan data real
     - Jika tidak ada: interpolasi dari kecamatan terdekat
     """
     try:
@@ -110,20 +110,20 @@ def get_current_weather(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# === 3️⃣ SINKRONISASI MANUAL DENGAN BMKG ===
+# === 3️⃣ SINKRONISASI MANUAL DENGAN OPENWEATHER ===
 @router.post("/sync")
 def sync_weather_data(db: Session = Depends(get_db)):
-    """Sinkronisasi data cuaca dari BMKG"""
+    """Sinkronisasi data cuaca dari OpenWeather API"""
     try:
         df = fetch_weather_data()
         if df.empty:
-            raise HTTPException(status_code=404, detail="Tidak ada data dari BMKG")
+            raise HTTPException(status_code=404, detail="Tidak ada data dari OpenWeather")
 
         save_weather_data(db, df)
-        logging.info(f"✅ Berhasil sinkron {len(df)} data dari BMKG.")
+        logging.info(f"✅ Berhasil sinkron {len(df)} data dari OpenWeather.")
         return {
             "status": "success",
-            "message": f"Berhasil sinkron {len(df)} data dari BMKG",
+            "message": f"Berhasil sinkron {len(df)} data dari OpenWeather",
             "records": len(df),
         }
 

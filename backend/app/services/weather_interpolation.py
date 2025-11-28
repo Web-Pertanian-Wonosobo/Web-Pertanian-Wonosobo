@@ -1,5 +1,5 @@
 # Weather Interpolation Service
-# Untuk generate data cuaca estimasi untuk kecamatan yang tidak punya data BMKG
+# Untuk generate data cuaca estimasi untuk kecamatan yang tidak punya data OpenWeather
 
 import logging
 from typing import Dict, List, Optional
@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 # === Koordinat geografis kecamatan di Wonosobo (lat, lon) ===
 KECAMATAN_COORDINATES = {
-    # Kecamatan dengan data BMKG (reference points)
+    # Kecamatan dengan data OpenWeather (reference points)
     "WADASLINTANG": (-7.4789, 109.9156),
     "KALIBAWANG": (-7.3567, 109.9234),
     
@@ -82,7 +82,7 @@ def interpolate_weather_data(
     k: int = 3
 ) -> Optional[Dict]:
     """
-    Interpolasi data cuaca untuk lokasi yang tidak punya data BMKG
+    Interpolasi data cuaca untuk lokasi yang tidak punya data OpenWeather
     Menggunakan Inverse Distance Weighting (IDW) dari k lokasi terdekat
     
     Args:

@@ -32,9 +32,18 @@ import {
   type WeatherData,
   type WeatherPrediction,
 } from "../services/weatherApi";
+import {
+  fetchOpenWeatherDirect,
+  groupForecastsByDay,
+  getAverageTemp,
+  getTotalRainfall,
+  getDominantWeather,
+  getWeatherDescription,
+  WONOSOBO_COORDINATES,
+} from "../services/openWeatherApi";
 
-// === Interface untuk data BMKG ===
-interface ParsedBMKGData {
+// === Interface untuk data OpenWeather ===
+interface ParsedWeatherData {
   forecasts: {
     date: string;
     temperature: number;
@@ -43,72 +52,33 @@ interface ParsedBMKGData {
   }[];
 }
 
-// === Kode ADM4 BMKG untuk kecamatan Wonosobo ===
-const WONOSOBO_ADM4_CODES = {
-  KALIBAWANG: '33.07.15',
-  WONOSOBO: '33.07.09',
-  KERTEK: '33.07.08',
-  GARUNG: '33.07.12',
-  LEKSONO: '33.07.05',
-  KALIWIRO: '33.07.04',
-  SUKOHARJO: '33.07.14',
-  SAPURAN: '33.07.03',
-  KALIKAJAR: '33.07.07',
-  KEPIL: '33.07.02',
-  MOJOTENGAH: '33.07.11',
-  SELOMERTO: '33.07.06',
-  WADASLINTANG: '33.07.01',
-  WATUMALANG: '33.07.10',
-  KEJAJAR: '33.07.13',
-};
-
-
-// === Fungsi fetch data BMKG ===
-const fetchBMKGDirect = async (adm4Code: string): Promise<ParsedBMKGData> => {
+// === Fungsi fetch data OpenWeather ===
+const fetchWeatherDirect = async (location: string): Promise<ParsedWeatherData> => {
   try {
-    // Simulasi data - ganti dengan API call real jika tersedia
-    console.log('Fetching BMKG data for code:', adm4Code);
+    console.log('Fetching OpenWeather data for location:', location);
     
-    // Return data kosong untuk sementara
-    return {
-      forecasts: []
-    };
+    const openWeatherData = await fetchOpenWeatherDirect(location);
+    
+    if (!openWeatherData || !openWeatherData.forecasts.length) {
+      return { forecasts: [] };
+    }
+    
+    // Transform OpenWeather data to our interface
+    const forecasts = openWeatherData.forecasts.map(forecast => ({
+      date: new Date(forecast.dt * 1000).toISOString(),
+      temperature: forecast.main.temp,
+      weather: getWeatherDescription(forecast.weather[0]?.main || 'Clear'),
+      rainfall: forecast.rain?.['3h'] || 0,
+    }));
+    
+    return { forecasts };
   } catch (error) {
-    console.error('Error fetching BMKG data:', error);
+    console.error('Error fetching OpenWeather data:', error);
     return { forecasts: [] };
   }
 };
 
-// === Fungsi helper untuk grouping dan agregasi ===
-const groupForecastsByDay = (forecasts: any[]) => {
-  const grouped: Record<string, any[]> = {};
-  forecasts.forEach(f => {
-    const day = new Date(f.date).toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short' });
-    if (!grouped[day]) grouped[day] = [];
-    grouped[day].push(f);
-  });
-  return grouped;
-};
 
-const getAverageTemp = (forecasts: any[]) => {
-  if (!forecasts.length) return 0;
-  const sum = forecasts.reduce((acc, f) => acc + (f.temperature || 0), 0);
-  return (sum / forecasts.length).toFixed(1);
-};
-
-const getTotalRainfall = (forecasts: any[]) => {
-  return forecasts.reduce((acc, f) => acc + (f.rainfall || 0), 0);
-};
-
-const getDominantWeather = (forecasts: any[]) => {
-  if (!forecasts.length) return 'Cerah';
-  const weatherCount: Record<string, number> = {};
-  forecasts.forEach(f => {
-    const weather = f.weather || 'Cerah';
-    weatherCount[weather] = (weatherCount[weather] || 0) + 1;
-  });
-  return Object.entries(weatherCount).sort((a, b) => b[1] - a[1])[0][0];
-};
 
 // === Tentukan ikon berdasarkan deskripsi cuaca ===
 const getIconForWeather = (weatherDesc: string) => {
@@ -119,44 +89,45 @@ const getIconForWeather = (weatherDesc: string) => {
   return Sun;
 };
 
-// === Mapping nama lokasi ke kode ADM4 BMKG ===
-const getADM4Code = (locationName: string): string => {
-  // Normalisasi nama lokasi (uppercase, hapus spasi)
-  const normalized = locationName.toUpperCase().trim().replace(/\s+/g, '');
+// === Validasi lokasi yang tersedia di OpenWeather ===
+// const isValidLocation = (locationName: string): boolean => {
+//   const normalized = locationName.replace(/\s+/g, '').toLowerCase();
+//   const availableLocations = Object.keys(WONOSOBO_COORDINATES).map(loc => 
+//     loc.replace(/\s+/g, '').toLowerCase()
+//   );
+//   return availableLocations.some(loc => loc.includes(normalized) || normalized.includes(loc));
+// };
+
+// === Mapping nama lokasi ke nama standar ===
+const getStandardLocationName = (locationName: string): string => {
+  const normalized = locationName.toLowerCase().replace(/\s+/g, '');
   
-  // Mapping langsung ke WONOSOBO_ADM4_CODES
-  const mapping: Record<string, keyof typeof WONOSOBO_ADM4_CODES> = {
-    'KALIBAWANG': 'KALIBAWANG',
-    'WONOSOBO': 'WONOSOBO',
-    'KERTEK': 'KERTEK',
-    'GARUNG': 'GARUNG',
-    'LEKSONO': 'LEKSONO',
-    'KALIWIRO': 'KALIWIRO',
-    'SUKOHARJO': 'SUKOHARJO',
-    'SAPURAN': 'SAPURAN',
-    'KALIKAJAR': 'KALIKAJAR',
-    'KEPIL': 'KEPIL',
-    'MOJOTENGAH': 'MOJOTENGAH',
-    'SELOMERTO': 'SELOMERTO',
-    'WADASLINTANG': 'WADASLINTANG',
-    'WATUMALANG': 'WATUMALANG',
-    'KEJAJAR': 'KEJAJAR',
+  // Mapping alternatif nama
+  const mapping: Record<string, string> = {
+    'wonosobokota': 'Wonosobo',
+    'wonosobo': 'Wonosobo',
+    'kalibawang': 'Kalibawang',
+    'kertek': 'Kertek',
+    'garung': 'Garung',
+    'leksono': 'Leksono',
+    'kaliwiro': 'Kaliwiro',
+    'selomerto': 'Selomerto',
+    'kalikajar': 'Kalikajar',
+    'kejajar': 'Kejajar',
+    'mojotengah': 'Mojotengah',
+    'wadaslintang': 'Wadaslintang',
   };
   
-  const key = mapping[normalized];
-  if (key && WONOSOBO_ADM4_CODES[key]) {
-    return WONOSOBO_ADM4_CODES[key];
-  }
-  
-  // Default ke Wonosobo jika tidak ditemukan
-  return WONOSOBO_ADM4_CODES.WONOSOBO;
+  return mapping[normalized] || 'Wonosobo';
 };
 
 export function WeatherPrediction() {
+  console.log('🚀 WeatherPrediction component rendering...');
+  
   const [locations, setLocations] = useState<string[]>([]);
   const [selectedLocation, setSelectedLocation] = useState<string>("");
   const [currentWeather, setCurrentWeather] = useState<WeatherData[]>([]);
-  const [bmkgDetailData, setBmkgDetailData] = useState<ParsedBMKGData | null>(null);
+  const [weatherDetailData, setWeatherDetailData] = useState<ParsedWeatherData | null>(null);
   const [backendPredictions, setBackendPredictions] = useState<WeatherPrediction[]>([]);
   const [loading, setLoading] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -166,16 +137,19 @@ export function WeatherPrediction() {
     const loadWeather = async () => {
       setIsLoading(true);
       try {
+        console.log('🌤️ Memuat data cuaca dari backend...');
         const data = await fetchCurrentWeather();
+        console.log('📊 Data cuaca diterima:', data);
         setCurrentWeather(data);
 
         const uniqueLocations = [...new Set(data.map((item) => item.location_name))];
+        console.log('📍 Lokasi tersedia:', uniqueLocations);
         setLocations(uniqueLocations);
         if (uniqueLocations.length > 0) {
           setSelectedLocation(uniqueLocations[0]);
         }
       } catch (e) {
-        console.error("Gagal memuat data cuaca:", e);
+        console.error("❌ Gagal memuat data cuaca:", e);
       } finally {
         setIsLoading(false);
       }
@@ -183,21 +157,21 @@ export function WeatherPrediction() {
     loadWeather();
   }, []);
 
-  // === Ambil data BMKG sesuai lokasi terpilih ===
+  // === Ambil data OpenWeather sesuai lokasi terpilih ===
   useEffect(() => {
-    const loadBMKG = async () => {
+    const loadWeatherData = async () => {
       if (!selectedLocation) return;
       try {
-        // Konversi nama lokasi ke kode ADM4
-        const adm4Code = getADM4Code(selectedLocation);
-        console.log(`Fetching BMKG data for ${selectedLocation} (${adm4Code})`);
-        const bmkgDetail = await fetchBMKGDirect(adm4Code);
-        setBmkgDetailData(bmkgDetail);
+        // Konversi nama lokasi ke nama standar
+        const standardLocation = getStandardLocationName(selectedLocation);
+        console.log(`Fetching OpenWeather data for ${selectedLocation} -> ${standardLocation}`);
+        const weatherDetail = await fetchWeatherDirect(standardLocation);
+        setWeatherDetailData(weatherDetail);
       } catch (e) {
-        console.error("Gagal memuat data BMKG:", e);
+        console.error("Gagal memuat data OpenWeather:", e);
       }
     };
-    loadBMKG();
+    loadWeatherData();
   }, [selectedLocation]);
 
   // === Ambil prediksi AI sesuai lokasi terpilih ===
@@ -216,17 +190,58 @@ export function WeatherPrediction() {
     }
   };
 
-  if (isLoading)
+  if (isLoading) {
     return (
       <div className="p-6 flex justify-center items-center h-screen text-muted-foreground">
-        Memuat data cuaca...
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          Memuat data cuaca...
+        </div>
       </div>
     );
+  }
+
+  // Error state - jika tidak ada data sama sekali
+  if (!currentWeather || currentWeather.length === 0) {
+    return (
+      <div className="p-6 max-w-7xl mx-auto">
+        <h1 className="text-3xl font-bold mb-2">Prediksi Cuaca</h1>
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+          <p className="text-yellow-800">
+            ⚠️ Tidak ada data cuaca tersedia. Pastikan backend server berjalan di http://127.0.0.1:8000
+          </p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="mt-2 bg-yellow-600 text-white px-4 py-2 rounded hover:bg-yellow-700"
+          >
+            Muat Ulang
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Warning jika tidak ada lokasi
+  if (locations.length === 0) {
+    return (
+      <div className="p-6 max-w-7xl mx-auto">
+        <h1 className="text-3xl font-bold mb-2">Prediksi Cuaca</h1>
+        <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-6">
+          <p className="text-orange-800">
+            ⚠️ Tidak ada lokasi tersedia dalam data cuaca. 
+          </p>
+          <p className="text-sm text-orange-600 mt-1">
+            Data: {currentWeather.length} records ditemukan
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   // === Filter data hari ini untuk lokasi terpilih ===
   const today = new Date().toISOString().split("T")[0];
   const todayWeather = currentWeather
-    .filter((w) => w.location_name === selectedLocation && w.date.startsWith(today));
+    .filter((w) => w.location_name === selectedLocation && w.date && w.date.startsWith(today));
 
   const avgTemp = todayWeather.length
     ? (todayWeather.reduce((sum, w) => sum + (w.temperature || 0), 0) / todayWeather.length).toFixed(1)
@@ -245,7 +260,7 @@ export function WeatherPrediction() {
     <div className="p-6 max-w-7xl mx-auto">
       <h1 className="text-3xl font-bold mb-2">Prediksi Cuaca</h1>
       <p className="text-muted-foreground mb-6">
-        Prakiraan cuaca harian berdasarkan data BMKG dan model AI/ML.
+        Prakiraan cuaca harian berdasarkan data OpenWeather dan model AI/ML.
       </p>
 
       {/* === Dropdown Lokasi (otomatis dari backend) === */}
@@ -273,7 +288,7 @@ export function WeatherPrediction() {
       <Tabs defaultValue="today" className="space-y-6">
         <TabsList>
           <TabsTrigger value="today">Cuaca Hari Ini</TabsTrigger>
-          <TabsTrigger value="bmkg">Prakiraan BMKG</TabsTrigger>
+          <TabsTrigger value="openweather">Prakiraan OpenWeather</TabsTrigger>
           <TabsTrigger value="ml">Prediksi AI / ML</TabsTrigger>
         </TabsList>
 
@@ -342,38 +357,66 @@ export function WeatherPrediction() {
           </Card>
         </TabsContent>
 
-        {/* === BMKG === */}
-        <TabsContent value="bmkg">
-          {bmkgDetailData ? (
+        {/* === OPENWEATHER === */}
+        <TabsContent value="openweather">
+          {weatherDetailData ? (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <CloudRain className="h-5 w-5 text-blue-600" />
-                  Prakiraan BMKG ({selectedLocation})
+                  Prakiraan OpenWeather ({selectedLocation})
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {bmkgDetailData.forecasts && bmkgDetailData.forecasts.length > 0 ? (
+                {weatherDetailData.forecasts && weatherDetailData.forecasts.length > 0 ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                     {(() => {
-                      const grouped = groupForecastsByDay(bmkgDetailData.forecasts);
+                      // Convert our parsed data to compatible format for grouping
+                      const forecastsForGrouping = weatherDetailData.forecasts.map((f, index) => ({
+                        date: f.date,
+                        temperature: f.temperature,
+                        weather: f.weather,
+                        rainfall: f.rainfall,
+                        key: `forecast-${index}` // Add unique key
+                      }));
+                      
+                      // Simple grouping by day
+                      const grouped: Record<string, any[]> = {};
+                      forecastsForGrouping.forEach(forecast => {
+                        const date = new Date(forecast.date);
+                        const day = date.toLocaleDateString('id-ID', { 
+                          weekday: 'short', 
+                          day: 'numeric', 
+                          month: 'short' 
+                        });
+                        if (!grouped[day]) grouped[day] = [];
+                        grouped[day].push(forecast);
+                      });
+                      
                       return Object.keys(grouped)
                         .slice(0, 5)
                         .map((day, idx) => {
                           const daily = grouped[day];
-                          const avg = getAverageTemp(daily);
-                          const rain = getTotalRainfall(daily);
-                          const weather = getDominantWeather(daily);
+                          
+                          // Calculate averages
+                          const avgTemp = daily.length > 0 
+                            ? (daily.reduce((sum, f) => sum + f.temperature, 0) / daily.length).toFixed(1)
+                            : "0";
+                          const totalRain = daily.reduce((sum, f) => sum + f.rainfall, 0);
+                          
+                          // Get weather (just use first one for simplicity)
+                          const weather = daily[0]?.weather || 'Cerah';
                           const Icon = getIconForWeather(weather);
+                          
                           return (
-                            <Card key={idx} className="hover:shadow-md border-2">
+                            <Card key={`day-${idx}`} className="hover:shadow-md border-2">
                               <CardContent className="p-4 text-center space-y-2">
                                 <h3 className="font-semibold">{day}</h3>
                                 <Icon className="h-8 w-8 mx-auto text-blue-500" />
                                 <p className="text-sm">{weather}</p>
-                                <p className="text-lg font-bold">{avg}°C</p>
+                                <p className="text-lg font-bold">{avgTemp}°C</p>
                                 <p className="text-xs text-muted-foreground">
-                                  Hujan: {rain.toFixed(1)} mm
+                                  Hujan: {totalRain.toFixed(1)} mm
                                 </p>
                               </CardContent>
                             </Card>
@@ -383,14 +426,14 @@ export function WeatherPrediction() {
                   </div>
                 ) : (
                   <p className="text-center text-muted-foreground py-8">
-                    Data BMKG tidak tersedia untuk lokasi ini.
+                    Data OpenWeather tidak tersedia untuk lokasi ini.
                   </p>
                 )}
               </CardContent>
             </Card>
           ) : (
             <p className="text-center text-muted-foreground py-6">
-              Data BMKG belum dimuat.
+              Data OpenWeather belum dimuat.
             </p>
           )}
         </TabsContent>

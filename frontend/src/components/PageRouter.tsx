@@ -7,6 +7,7 @@ import { AdminDashboard } from './AdminDashboard';
 import { UserManagement } from './UserManagement';
 import { LoginRegisterWithRole } from './LoginRegisterWithRole';
 import { PriceDataManagement } from './PriceDataManagement';
+import { WeatherDebug } from './WeatherDebug';
 
 interface PageRouterProps {
   currentPage: string;
@@ -18,7 +19,7 @@ interface PageRouterProps {
 
 export function PageRouter({ currentPage, userRole, onNavigate, onLogout, isLoggedIn }: PageRouterProps) {
   // Halaman yang bisa diakses tanpa login (publik)
-  const publicPages = ['dashboard', 'weather', 'price-prediction', 'slope-analysis'];
+  const publicPages = ['dashboard', 'weather', 'openweather', 'price-prediction', 'slope-analysis'];
   
   // Halaman khusus admin
   const adminPages = ['admin-dashboard', 'user-management', 'price-data-management'];
@@ -29,6 +30,12 @@ export function PageRouter({ currentPage, userRole, onNavigate, onLogout, isLogg
     
     case 'weather':
       return <WeatherPrediction />;
+    
+    case 'openweather':
+      return <WeatherPrediction />;
+    
+    case 'weather-debug':
+      return <WeatherDebug />;
     
     case 'price-prediction':
       return <PricePrediction />;

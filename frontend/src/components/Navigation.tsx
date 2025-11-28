@@ -21,7 +21,7 @@ const navigationItems = [
   { id: "dashboard", label: "Dashboard", icon: Home },
   { id: "slope", label: "Analisis Lereng", icon: Mountain },
   { id: "weather", label: "Prediksi Cuaca", icon: CloudSun },
-  { id: "bmkg-weather", label: "Data BMKG", icon: Cloud },
+  { id: "openweather", label: "Data OpenWeather", icon: Cloud },
   { id: "price", label: "Prediksi Harga", icon: TrendingUp },
 ]; 
 

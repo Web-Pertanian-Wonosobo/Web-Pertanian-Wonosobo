@@ -81,7 +81,7 @@ export const fetchCurrentWeather = async (): Promise<WeatherData[]> => {
 };
 
 /**
- * Manually sync weather data from BMKG API
+ * Manually sync weather data from OpenWeather API
  */
 export const syncWeatherData = async (): Promise<boolean> => {
   try {
