@@ -551,14 +551,39 @@ export function WeatherPrediction() {
                     })}
                   </div>
 
-                  {/* Info jika data interpolasi */}
-                  {backendPredictions.length > 0 && backendPredictions[0].source?.includes("Interpolated") && (
-                    <div className="mb-4 p-3 bg-blue-50 rounded-lg text-sm text-blue-800">
-                      <p className="font-medium"> Prediksi dari Data Estimasi (Interpolasi)</p>
-                      <p className="text-xs mt-1">
-                        Prediksi cuaca untuk {selectedLocation} menggunakan data estimasi dari kecamatan terdekat.
-                        Akurasi prediksi: 95-98% (sangat reliable untuk perencanaan pertanian).
-                      </p>
+                  {/* Info sumber data prediksi */}
+                  {backendPredictions.length > 0 && (
+                    <div className="mb-4 p-3 rounded-lg text-sm">
+                      {backendPredictions[0].source?.includes("OpenWeather Direct") ? (
+                        <div className="bg-green-50 text-green-800 border border-green-200">
+                          <div className="flex items-center gap-2 mb-1">
+                            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                            <p className="font-medium">✅ Prediksi AI/ML - Data Real OpenWeather</p>
+                          </div>
+                          <p className="text-xs">
+                            Prediksi menggunakan <strong>Prophet Machine Learning</strong> dengan data cuaca real dari OpenWeather API 
+                            koordinat {selectedLocation}. Tanpa interpolasi atau estimasi.
+                          </p>
+                          <p className="text-xs mt-1 font-medium">
+                            Model: {backendPredictions[0].source}
+                          </p>
+                        </div>
+                      ) : backendPredictions[0].source?.includes("Interpolated") ? (
+                        <div className="bg-blue-50 text-blue-800 border border-blue-200">
+                          <p className="font-medium">ℹ️ Prediksi dari Data Estimasi (Interpolasi)</p>
+                          <p className="text-xs mt-1">
+                            Prediksi cuaca untuk {selectedLocation} menggunakan data estimasi dari kecamatan terdekat.
+                            Akurasi prediksi: 95-98% (sangat reliable untuk perencanaan pertanian).
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="bg-gray-50 text-gray-800 border border-gray-200">
+                          <p className="font-medium">🤖 Prediksi AI/ML</p>
+                          <p className="text-xs mt-1">
+                            Model: {backendPredictions[0].source || "Unknown"}
+                          </p>
+                        </div>
+                      )}
                     </div>
                   )}
 

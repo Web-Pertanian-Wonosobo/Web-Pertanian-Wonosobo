@@ -1,5 +1,6 @@
 import os
 from dotenv import load_dotenv
+import logging
 from sqlalchemy import create_engine
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,6 +11,16 @@ load_dotenv()
 
 # Database configuration
 DATABASE_URL = os.getenv("DATABASE_URL")
+OPENWEATHER_BASE_URL = os.getenv("OPENWEATHER_BASE_URL", "https://api.openweathermap.org/data/2.5").strip()
+OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY", "2f520b912f9b1f66af08fe302bf184f6").strip()
+
+# Normalize OpenWeather base URL to avoid typos like aapi/appi/https::// etc
+if "openweathermap.org" not in OPENWEATHER_BASE_URL:
+    logging.warning(f"⚠️ OPENWEATHER_BASE_URL invalid ('{OPENWEATHER_BASE_URL}'), forcing default")
+    OPENWEATHER_BASE_URL = "https://api.openweathermap.org/data/2.5"
+if OPENWEATHER_BASE_URL.endswith('/'):
+    OPENWEATHER_BASE_URL = OPENWEATHER_BASE_URL.rstrip('/')
+os.environ["OPENWEATHER_BASE_URL"] = OPENWEATHER_BASE_URL
 
 # Validate DATABASE_URL
 if not DATABASE_URL:
@@ -58,7 +69,8 @@ def startup_event():
         print(f"⚠️ Initial sync failed: {e}")
     
     # Enable scheduler untuk auto-sync harian
-    if AUTO_SYNC_ENABLED:
+    # Disable auto-sync if OpenWeather API key missing
+    if AUTO_SYNC_ENABLED and OPENWEATHER_API_KEY:
         try:
             from app.scheduler import start_scheduler_with_interval
             start_scheduler_with_interval(hours=SYNC_INTERVAL_HOURS)
@@ -67,7 +79,7 @@ def startup_event():
             print(f"⚠️ Scheduler failed to start: {e}")
             print("📝 Manual sync masih bisa dilakukan via POST /market/sync")
     else:
-        print("ℹ️ Auto-sync disabled. Use POST /market/sync for manual sync")
+        print("ℹ️ Auto-sync disabled (no API key or disabled). Use POST /market/sync for manual sync")
 
 # Shutdown event
 @app.on_event("shutdown")
