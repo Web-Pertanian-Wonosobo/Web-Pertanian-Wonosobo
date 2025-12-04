@@ -4,7 +4,7 @@ import logging
 from sqlalchemy import create_engine
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import weather, market, auth, wilayah, forecast
+from app.routers import weather, market, auth, wilayah, forecast, crops
 
 #load environment variables
 load_dotenv()
@@ -48,6 +48,7 @@ app.add_middleware(
 app.include_router(weather.router)  # Router already has /weather prefix
 app.include_router(market.router)  # Router already has /market prefix
 app.include_router(auth.router)  # Router already has /auth prefix
+app.include_router(crops.router)  # Router already has /crops prefix
 app.include_router(wilayah.router)  # Router already has /wilayah prefix
 app.include_router(forecast.router)  # Router already has /forecast prefix
 # app.include_router(predict.router)  # Temporarily disabled 

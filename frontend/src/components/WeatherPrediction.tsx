@@ -33,6 +33,11 @@ import {
   type WeatherPrediction,
 } from "../services/weatherApi";
 import {
+  fetchCropRecommendationsByLocation,
+  type CropRecommendationResponse,
+} from "../services/cropApi";
+import { CropRecommendations } from "./CropRecommendations";
+import {
   fetchOpenWeatherDirect,
   groupForecastsByDay,
   getAverageTemp,
@@ -129,7 +134,9 @@ export function WeatherPrediction() {
   const [currentWeather, setCurrentWeather] = useState<WeatherData[]>([]);
   const [weatherDetailData, setWeatherDetailData] = useState<ParsedWeatherData | null>(null);
   const [backendPredictions, setBackendPredictions] = useState<WeatherPrediction[]>([]);
+  const [cropRecommendations, setCropRecommendations] = useState<CropRecommendationResponse | null>(null);
   const [loading, setLoading] = useState(false);
+  const [cropLoading, setCropLoading] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   // === Ambil data dari backend (/weather/current) ===
@@ -187,6 +194,22 @@ export function WeatherPrediction() {
       console.error("Gagal memuat prediksi AI:", e);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // === Ambil rekomendasi tanaman berdasarkan prediksi cuaca ===
+  const handleGetCropRecommendations = async () => {
+    if (!selectedLocation) return;
+    setCropLoading(true);
+    try {
+      console.log('Meminta rekomendasi tanaman untuk lokasi:', selectedLocation);
+      const recommendations = await fetchCropRecommendationsByLocation(selectedLocation, 7);
+      console.log('Rekomendasi tanaman diterima:', recommendations);
+      setCropRecommendations(recommendations);
+    } catch (e) {
+      console.error("Gagal memuat rekomendasi tanaman:", e);
+    } finally {
+      setCropLoading(false);
     }
   };
 
@@ -290,6 +313,7 @@ export function WeatherPrediction() {
           <TabsTrigger value="today">Cuaca Hari Ini</TabsTrigger>
           <TabsTrigger value="openweather">Prakiraan OpenWeather</TabsTrigger>
           <TabsTrigger value="ml">Prediksi AI / ML</TabsTrigger>
+          <TabsTrigger value="crops">Rekomendasi Tanaman</TabsTrigger>
         </TabsList>
 
         {/* === CUACA HARI INI === */}
@@ -632,6 +656,70 @@ export function WeatherPrediction() {
               ) : (
                 <div className="text-center text-muted-foreground py-8">
                   Belum ada hasil prediksi. Klik tombol di atas.
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* === REKOMENDASI TANAMAN === */}
+        <TabsContent value="crops">
+          <Card>
+            <CardHeader className="flex flex-col md:flex-row md:items-center md:justify-between">
+              <div className="flex items-center space-x-2">
+                <Sprout className="h-5 w-5 text-green-500" />
+                <CardTitle>Rekomendasi Komoditas Pangan ({selectedLocation})</CardTitle>
+              </div>
+              <Button
+                onClick={handleGetCropRecommendations}
+                disabled={cropLoading}
+                className="bg-green-600 hover:bg-green-700 text-white mt-3 md:mt-0"
+              >
+                {cropLoading ? "Menganalisis..." : "Analisis Tanaman"}
+              </Button>
+            </CardHeader>
+
+            <CardContent>
+              {cropLoading ? (
+                <p className="text-center text-muted-foreground py-8">
+                  Menganalisis kondisi cuaca dan memberikan rekomendasi tanaman...
+                </p>
+              ) : cropRecommendations ? (
+                <CropRecommendations 
+                  recommendations={cropRecommendations.recommendations}
+                  weather_analysis={cropRecommendations.weather_analysis}
+                  planting_tips={cropRecommendations.planting_tips}
+                  season_info={cropRecommendations.season_info}
+                  location={cropRecommendations.location_name}
+                  prediction_source={cropRecommendations.prediction_source}
+                />
+              ) : (
+                <div className="text-center text-muted-foreground py-8">
+                  <div className="mb-4">
+                    <Sprout className="h-12 w-12 mx-auto text-green-300 mb-2" />
+                    <p className="text-lg font-medium">Analisis Rekomendasi Tanaman</p>
+                    <p className="text-sm">
+                      Dapatkan rekomendasi komoditas pangan terbaik berdasarkan prediksi cuaca AI/ML
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-500 max-w-2xl mx-auto">
+                    <div className="text-center">
+                      <Thermometer className="h-6 w-6 mx-auto mb-1 text-orange-400" />
+                      <p>Analisis Suhu</p>
+                    </div>
+                    <div className="text-center">
+                      <CloudRain className="h-6 w-6 mx-auto mb-1 text-blue-400" />
+                      <p>Curah Hujan</p>
+                    </div>
+                    <div className="text-center">
+                      <Sprout className="h-6 w-6 mx-auto mb-1 text-green-400" />
+                      <p>Kesesuaian Tanaman</p>
+                    </div>
+                    <div className="text-center">
+                      <Zap className="h-6 w-6 mx-auto mb-1 text-purple-400" />
+                      <p>AI/ML Analysis</p>
+                    </div>
+                  </div>
                 </div>
               )}
             </CardContent>
