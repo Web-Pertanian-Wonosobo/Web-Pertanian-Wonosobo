@@ -7,11 +7,11 @@ import { Eye, EyeOff, Mail, Lock, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 // Auth API functions
-const BACKEND_API = "http://127.0.0.1:8000/auth";
+const BACKEND_API = "http://127.0.0.1:8080/auth";
 
 async function loginAdmin(credentials: { email: string; password: string }) {
   try {
-    console.log(" Attempting login for:", credentials.email);
+    console.log("🔑 Attempting login for:", credentials.email);
 
     const response = await fetch(`${BACKEND_API}/login`, {
       method: "POST",
@@ -22,24 +22,33 @@ async function loginAdmin(credentials: { email: string; password: string }) {
     });
 
     const data = await response.json();
-    console.log(" Backend response:", data);
+    console.log("📡 Backend response:", data);
 
     if (!response.ok) {
-      console.error(" HTTP error:", response.status, data);
+      console.error("❌ HTTP error:", response.status, data);
       throw new Error(data.detail || data.message || "Login gagal");
     }
 
     if (data.success === true && data.user) {
-      localStorage.setItem("authUser", JSON.stringify(data.user));
+      // Tambahkan timestamp login untuk tracking session
+      const sessionData = {
+        ...data.user,
+        loginTime: new Date().toISOString(),
+        sessionExpiry: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 jam
+      };
+      
+      localStorage.setItem("authUser", JSON.stringify(sessionData));
       localStorage.setItem("authRole", data.user.role);
-      console.log(" Login berhasil! User saved to localStorage:", data.user);
+      localStorage.setItem("authToken", data.token || "local-session"); // Store token if available
+      
+      console.log("✅ Login berhasil! Session saved:", sessionData);
     } else {
-      console.warn(" Login gagal:", data.message);
+      console.warn("⚠️ Login gagal:", data.message);
     }
 
     return data;
   } catch (error: any) {
-    console.error(" Login API error:", error);
+    console.error("❌ Login API error:", error);
     throw error;
   }
 }

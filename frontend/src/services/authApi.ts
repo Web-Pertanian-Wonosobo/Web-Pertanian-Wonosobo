@@ -1,4 +1,4 @@
-const BACKEND_API = "http://127.0.0.1:8000/auth";
+const BACKEND_API = "http://127.0.0.1:8080/auth";
 
 interface LoginCredentials {
   email: string;

@@ -11,7 +11,12 @@ import {
   User
 } from 'lucide-react';
 
-export function PublicNavigation() {
+interface PublicNavigationProps {
+  isLoggedIn?: boolean;
+  onLogout?: () => void;
+}
+
+export function PublicNavigation({ isLoggedIn, onLogout }: PublicNavigationProps) {
   const location = useLocation();
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Home, path: '/dashboard' },

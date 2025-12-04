@@ -16,8 +16,87 @@ export default function App() {
   const location = useLocation();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userRole, setUserRole] = useState<"admin" | null>(null);
+  const [isInitializing, setIsInitializing] = useState(true);
 
-  // No auto-redirect, let Routes handle 404
+  // Periksa localStorage saat aplikasi dimuat untuk memulihkan sesi
+  useEffect(() => {
+    const checkAuthStatus = () => {
+      try {
+        const savedUser = localStorage.getItem("authUser");
+        const savedRole = localStorage.getItem("authRole");
+        const savedToken = localStorage.getItem("authToken");
+        
+        console.log("🔍 Checking localStorage for existing session...");
+        console.log("Saved user:", savedUser ? "found" : "not found");
+        console.log("Saved role:", savedRole);
+        console.log("Saved token:", savedToken ? "found" : "not found");
+        
+        if (savedUser && savedRole) {
+          const user = JSON.parse(savedUser);
+          console.log("📋 Parsing user data:", user);
+          
+          // Check session expiry if available
+          if (user.sessionExpiry) {
+            const expiryTime = new Date(user.sessionExpiry);
+            const now = new Date();
+            
+            if (now > expiryTime) {
+              console.log("⏰ Session expired, clearing localStorage");
+              localStorage.removeItem("authUser");
+              localStorage.removeItem("authRole");
+              localStorage.removeItem("authToken");
+              setIsInitializing(false);
+              return;
+            }
+          }
+          
+          console.log("✅ Found valid session:", user);
+          
+          if (savedRole === "admin" && user.role === "admin") {
+            setIsLoggedIn(true);
+            setUserRole("admin");
+            console.log("🔐 Admin session restored");
+            
+            // Jika user berada di halaman public, redirect ke admin
+            if (!location.pathname.startsWith("/admin") && location.pathname !== "/") {
+              console.log("🔄 Redirecting to admin dashboard");
+              navigate("/admin/dashboard", { replace: true });
+            }
+          } else {
+            // Invalid atau corrupted data
+            console.warn("⚠️ Invalid session data found, clearing...");
+            localStorage.removeItem("authUser");
+            localStorage.removeItem("authRole");
+            localStorage.removeItem("authToken");
+          }
+        } else {
+          console.log("ℹ️ No existing session found");
+        }
+      } catch (error) {
+        console.error("❌ Error checking auth status:", error);
+        // Clear corrupted localStorage
+        localStorage.removeItem("authUser");
+        localStorage.removeItem("authRole");
+        localStorage.removeItem("authToken");
+      } finally {
+        setIsInitializing(false);
+      }
+    };
+
+    checkAuthStatus();
+  }, []); // Only run once on mount
+
+  // Show loading spinner while checking authentication
+  if (isInitializing) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Memuat...</p>
+        </div>
+      </div>
+    );
+  }
 
   // Determine app mode based on current path
   const isAdminRoute = location.pathname.startsWith("/admin");
@@ -27,15 +106,30 @@ export default function App() {
     console.log("🔑 Login dengan role:", role);
 
     if (role === "admin") {
-      setIsLoggedIn(true);
-      setUserRole("admin");
-      navigate("/admin/dashboard");
-      console.log("✅ Admin logged in");
+      // Pastikan data user sudah disimpan di localStorage dari LoginRegister
+      const savedUser = localStorage.getItem("authUser");
+      const savedRole = localStorage.getItem("authRole");
+      
+      if (savedUser && savedRole === "admin") {
+        setIsLoggedIn(true);
+        setUserRole("admin");
+        navigate("/admin/dashboard");
+        console.log("✅ Admin logged in and session saved");
+      } else {
+        console.error("❌ No admin user data found in localStorage");
+        // Fallback: tetap login tapi tanpa persistent session
+        setIsLoggedIn(true);
+        setUserRole("admin");
+        navigate("/admin/dashboard");
+      }
     } else if (role === "guest") {
       setIsLoggedIn(false);
       setUserRole(null);
+      // Clear any existing admin session
+      localStorage.removeItem("authUser");
+      localStorage.removeItem("authRole");
       navigate("/dashboard");
-      console.log("👥 User continues as guest");
+      console.log("👥 User continues as guest, admin session cleared");
     }
   };
 
@@ -43,10 +137,14 @@ export default function App() {
     console.log("🚪 User logging out...");
     setIsLoggedIn(false);
     setUserRole(null);
+    
+    // Clear all authentication data
     localStorage.removeItem("authUser");
     localStorage.removeItem("authRole");
-    navigate("/dashboard");
-    console.log("✅ Logout complete, localStorage cleared");
+    localStorage.removeItem("authToken");
+    
+    navigate("/dashboard", { replace: true });
+    console.log("✅ Logout complete, all auth data cleared");
   };
 
   // Protected route wrapper
@@ -80,6 +178,7 @@ export default function App() {
     <div className="min-h-screen bg-background flex">
       <NavigationComponent
         isLoggedIn={isLoggedIn}
+        onLogout={handleLogout}
       />
 
       <main className="flex-1 md:ml-64">

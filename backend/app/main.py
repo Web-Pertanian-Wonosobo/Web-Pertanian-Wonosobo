@@ -4,7 +4,11 @@ import logging
 from sqlalchemy import create_engine
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException
 from app.routers import weather, market, auth, wilayah, forecast, crops
+import logging
 
 #load environment variables
 load_dotenv()
@@ -34,6 +38,39 @@ app = FastAPI(
     description="API untuk data cuaca, harga pasar, dan prediksi pertanian",
     version="1.0.0"
 )
+
+# Custom exception handler untuk validation errors
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request, exc):
+    errors = []
+    for error in exc.errors():
+        # Handle date objects that can't be JSON serialized
+        input_value = error.get("input", "N/A")
+        if hasattr(input_value, 'isoformat'):
+            input_value = input_value.isoformat()
+        elif not isinstance(input_value, (str, int, float, bool, type(None))):
+            input_value = str(input_value)
+            
+        errors.append({
+            "field": error["loc"][-1] if error["loc"] else "unknown",
+            "message": error["msg"],
+            "type": error["type"],
+            "value": input_value
+        })
+    
+    logging.error(f"❌ Validation error on {request.url}: {errors}")
+    
+    error_messages = []
+    for e in errors:
+        error_messages.append(f"{e['field']}: {e['message']}")
+    
+    return JSONResponse(
+        status_code=422,
+        content={
+            "detail": f"Validation failed: {'; '.join(error_messages)}",
+            "errors": errors
+        }
+    )
 
 # CORS Configuration
 app.add_middleware(

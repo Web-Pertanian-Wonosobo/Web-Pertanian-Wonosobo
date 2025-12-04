@@ -60,7 +60,7 @@ export const fetchWeatherPredictions = async (
     // Gunakan endpoint koordinat yang menggunakan data real OpenWeather
     if (location && WONOSOBO_COORDINATES[location]) {
       const coords = WONOSOBO_COORDINATES[location];
-      const url = `http://127.0.0.1:8000/weather/predict/coordinates?lat=${coords.lat}&lon=${coords.lon}&location_name=${encodeURIComponent(location)}&days=${days}`;
+      const url = `http://127.0.0.1:8080/weather/predict/coordinates?lat=${coords.lat}&lon=${coords.lon}&location_name=${encodeURIComponent(location)}&days=${days}`;
       
       console.log(`🌦️ Fetching REAL weather predictions for ${location} using coordinates (${coords.lat}, ${coords.lon})`);
       
@@ -78,7 +78,7 @@ export const fetchWeatherPredictions = async (
     } else {
       // Fallback ke endpoint legacy jika tidak ada koordinat
       console.warn(`⚠️ No coordinates found for ${location}, using legacy endpoint`);
-      let url = `http://127.0.0.1:8000/weather/predict?days=${days}`;
+    let url = `http://127.0.0.1:8080/weather/predict?days=${days}`;
       if (location) {
         url += `&location=${encodeURIComponent(location)}`;
       }
@@ -102,7 +102,7 @@ export const fetchWeatherPredictions = async (
  */
 export const fetchCurrentWeather = async (): Promise<WeatherData[]> => {
   try {
-    const response = await fetch(`http://127.0.0.1:8000/weather/current`);
+    const response = await fetch(`http://127.0.0.1:8080/weather/current`);
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -119,7 +119,7 @@ export const fetchCurrentWeather = async (): Promise<WeatherData[]> => {
  */
 export const syncWeatherData = async (): Promise<boolean> => {
   try {
-    const response = await fetch(`http://127.0.0.1:8000/weather/sync`, {
+    const response = await fetch(`http://127.0.0.1:8080/weather/sync`, {
       method: "POST",
     });
     if (!response.ok) {
@@ -138,7 +138,7 @@ export const syncWeatherData = async (): Promise<boolean> => {
  */
 export const checkBackendHealth = async (): Promise<boolean> => {
   try {
-    const response = await fetch(`http://127.0.0.1:8000/health`, {
+    const response = await fetch(`http://127.0.0.1:8080/health`, {
       method: "GET",
     });
     return response.ok;

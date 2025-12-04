@@ -18,9 +18,10 @@ import {
 
 interface AdminNavigationProps {
   isLoggedIn?: boolean;
+  onLogout?: () => void;
 }
 
-export function AdminNavigation({}: AdminNavigationProps) {
+export function AdminNavigation({ onLogout }: AdminNavigationProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const menuItems = [
@@ -35,10 +36,22 @@ export function AdminNavigation({}: AdminNavigationProps) {
   ];
 
   const handleLogout = () => {
+    console.log("🚪 Logout initiated from AdminNavigation");
+    
+    // Clear localStorage
     localStorage.removeItem("authUser");
     localStorage.removeItem("authRole");
-    navigate("/dashboard");
-    window.location.reload(); // Reload to reset auth state
+    
+    // Call parent logout function if provided
+    if (onLogout) {
+      onLogout();
+    } else {
+      // Fallback: navigate and reload
+      navigate("/dashboard");
+      window.location.reload();
+    }
+    
+    console.log("✅ Logout completed");
   };
 
   const NavContent = () => (

@@ -231,7 +231,7 @@ export function WeatherPrediction() {
         <h1 className="text-3xl font-bold mb-2">Prediksi Cuaca</h1>
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
           <p className="text-yellow-800">
-            ⚠️ Tidak ada data cuaca tersedia. Pastikan backend server berjalan di http://127.0.0.1:8000
+            ⚠️ Tidak ada data cuaca tersedia. Pastikan backend server berjalan di http://127.0.0.1:8080
           </p>
           <button 
             onClick={() => window.location.reload()} 

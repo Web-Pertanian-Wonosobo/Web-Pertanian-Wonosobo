@@ -73,7 +73,7 @@ export const fetchCropRecommendationsByCoordinates = async (
   days: number = 7
 ): Promise<CropRecommendationResponse> => {
   try {
-    let url = `http://127.0.0.1:8000/crops/recommend/coordinates?lat=${lat}&lon=${lon}&days=${days}`;
+    let url = `http://127.0.0.1:8080/crops/recommend/coordinates?lat=${lat}&lon=${lon}&days=${days}`;
     if (locationName) {
       url += `&location_name=${encodeURIComponent(locationName)}`;
     }
@@ -103,7 +103,7 @@ export const fetchCropRecommendationsByLocation = async (
   days: number = 7
 ): Promise<CropRecommendationResponse> => {
   try {
-    const url = `http://127.0.0.1:8000/crops/recommend?location=${encodeURIComponent(location)}&days=${days}`;
+    const url = `http://127.0.0.1:8080/crops/recommend?location=${encodeURIComponent(location)}&days=${days}`;
     
     console.log(`🌾 Fetching crop recommendations for location: ${location}`);
     
@@ -132,7 +132,7 @@ export const fetchCropsDatabase = async (): Promise<{
   crops: CropDatabaseItem[];
 }> => {
   try {
-    const response = await fetch('http://127.0.0.1:8000/crops/database');
+    const response = await fetch('http://127.0.0.1:8080/crops/database');
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -156,7 +156,7 @@ export const fetchAvailableLocations = async (): Promise<{
   locations: LocationData[];
 }> => {
   try {
-    const response = await fetch('http://127.0.0.1:8000/crops/locations');
+    const response = await fetch('http://127.0.0.1:8080/crops/locations');
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }

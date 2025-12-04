@@ -22,7 +22,7 @@ export interface PriceDataCreate {
   date: string;
 }
 
-const BACKEND_API = "http://127.0.0.1:8000/market";
+const BACKEND_API = "http://127.0.0.1:8080/market";
 
 /**
  * Fetch all price data from local database
@@ -79,7 +79,26 @@ export const addPriceData = async (
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+      console.error("❌ API Error Response:", errorData);
+      
+      // Handle specific error codes
+      if (response.status === 422) {
+        let errorMessage = "Validation error: ";
+        if (errorData.detail) {
+          if (Array.isArray(errorData.detail)) {
+            // Pydantic validation errors
+            const errors = errorData.detail.map((err: any) => `${err.loc?.join('.')}: ${err.msg}`).join(', ');
+            errorMessage += errors;
+          } else {
+            errorMessage += errorData.detail;
+          }
+        } else {
+          errorMessage += "Data tidak valid";
+        }
+        throw new Error(errorMessage);
+      }
+      
+      throw new Error(errorData.detail || errorData.message || `HTTP error! status: ${response.status}`);
     }
 
     const result = await response.json();

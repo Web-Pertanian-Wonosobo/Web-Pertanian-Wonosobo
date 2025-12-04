@@ -110,14 +110,26 @@ export function PriceDataManagement() {
     }
 
     try {
+      // Validasi data sebelum submit
+      const commodity = formData.commodity.trim();
+      const location = formData.location.trim();
+      const unit = formData.unit.trim();
+      
+      if (!commodity || !location || !unit) {
+        toast.error('Semua field wajib diisi dan tidak boleh kosong');
+        return;
+      }
+      
       const dataToSubmit = {
         user_id: 1, // Admin user ID
-        commodity_name: formData.commodity,
-        market_location: formData.location,
-        unit: formData.unit,
+        commodity_name: commodity,
+        market_location: location,
+        unit: unit,
         price: price,
-        date: formData.date,
+        date: formData.date || new Date().toISOString().split('T')[0], // Default ke hari ini
       };
+      
+      console.log('📊 Data yang akan dikirim:', dataToSubmit);
 
       if (editingItem) {
         // Update existing item
@@ -127,7 +139,7 @@ export function PriceDataManagement() {
           toast.success('Data harga berhasil diperbarui');
           await loadData(); // Refresh data
         } else {
-          toast.error(result.message);
+          toast.error(`Gagal update: ${result.message}`);
         }
       } else {
         // Add new item
@@ -137,7 +149,7 @@ export function PriceDataManagement() {
           toast.success('Data harga berhasil ditambahkan');
           await loadData(); // Refresh data
         } else {
-          toast.error(result.message);
+          toast.error(`Gagal tambah data: ${result.message}`);
         }
       }
 
@@ -145,7 +157,7 @@ export function PriceDataManagement() {
       setIsAddDialogOpen(false);
     } catch (error) {
       console.error('Error submitting data:', error);
-      toast.error('Gagal menyimpan data ke backend');
+      toast.error(`Gagal menyimpan data: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 

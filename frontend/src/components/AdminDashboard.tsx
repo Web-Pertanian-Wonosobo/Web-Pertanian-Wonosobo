@@ -79,7 +79,7 @@ export function AdminDashboard({
 
         // Fetch weather data
         const weatherResponse = await fetch(
-          "http://127.0.0.1:8000/weather/current"
+          "http://127.0.0.1:8080/weather/current"
         );
         if (weatherResponse.ok) {
           const weatherJson = await weatherResponse.json();

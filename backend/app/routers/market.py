@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.exceptions import RequestValidationError
 from sqlalchemy.orm import Session
 from datetime import datetime, date
 from typing import Optional
+import logging
 from app.db import get_db
 from app.services.market_sync import (
     fetch_and_save_market_data, 
@@ -138,27 +140,68 @@ def get_market_prices(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Gagal mengambil data: {e}")
 
+@router.post("/test-schema")
+def test_schema_validation(price_data: MarketPriceCreate):
+    """
+    Test endpoint untuk debugging schema validation
+    """
+    try:
+        logging.info(f"📊 Test schema received: {price_data.dict()}")
+        return {
+            "status": "success",
+            "message": "Schema validation passed",
+            "data": price_data.dict()
+        }
+    except Exception as e:
+        logging.error(f"❌ Schema validation error: {e}")
+        raise HTTPException(status_code=422, detail=f"Schema validation failed: {e}")
+
 @router.post("/add")
 def add_market_price(price_data: MarketPriceCreate, db: Session = Depends(get_db)):
     """
     Menyimpan data harga pasar ke database (pakai JSON body).
     """
     try:
+        # Log data yang diterima untuk debugging
+        logging.info(f"📊 Received price data: {price_data.dict()}")
+        
+        # Validasi tambahan
+        if not price_data.commodity_name.strip():
+            raise HTTPException(status_code=422, detail="commodity_name tidak boleh kosong")
+        if not price_data.market_location.strip():
+            raise HTTPException(status_code=422, detail="market_location tidak boleh kosong")
+        if price_data.price <= 0:
+            raise HTTPException(status_code=422, detail="price harus lebih besar dari 0")
+        
         new_price = MarketPrice(
-            user_id=price_data.user_id,
-            commodity_name=price_data.commodity_name,
-            market_location=price_data.market_location,
-            unit=price_data.unit,
-            price=price_data.price,
-            date=price_data.date or datetime.now().date(),
+            user_id=price_data.user_id or 1,  # Default ke admin
+            commodity_name=price_data.commodity_name.strip(),
+            market_location=price_data.market_location.strip(),
+            unit=price_data.unit.strip(),
+            price=float(price_data.price),
+            date=datetime.strptime(price_data.date, '%Y-%m-%d').date() if price_data.date else datetime.now().date(),
             created_at=datetime.now()
         )
+        
         db.add(new_price)
         db.commit()
         db.refresh(new_price)
-        return {"message": "Data harga berhasil disimpan", "data": new_price.price_id}
+        
+        logging.info(f"✅ Price data saved with ID: {new_price.price_id}")
+        return {
+            "status": "success", 
+            "message": "Data harga berhasil disimpan", 
+            "data": new_price.price_id
+        }
+        
+    except RequestValidationError as e:
+        logging.error(f"❌ Validation error: {e}")
+        raise HTTPException(status_code=422, detail=f"Validation error: {str(e)}")
+    except HTTPException:
+        raise  # Re-raise HTTPException as is
     except Exception as e:
         db.rollback()
+        logging.error(f"❌ Error saving price data: {e}")
         raise HTTPException(status_code=500, detail=f"Gagal menyimpan data: {e}")
 
 @router.put("/update/{price_id}")

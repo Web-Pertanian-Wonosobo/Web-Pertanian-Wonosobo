@@ -74,7 +74,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
     const fetchWeather = async () => {
       setLoadingWeather(true);
       try {
-        const response = await fetch("http://127.0.0.1:8000/weather/current");
+        const response = await fetch("http://127.0.0.1:8080/weather/current");
         if (!response.ok) throw new Error("Gagal mengambil data cuaca");
         const data = await response.json();
 
