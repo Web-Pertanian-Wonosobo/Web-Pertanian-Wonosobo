@@ -25,6 +25,36 @@ console.log('Elevation API initialized. API Key set:', GOOGLE_MAPS_API_KEY !== '
 console.log('Using mock data:', USE_MOCK_DATA);
 
 /**
+ * Fallback menggunakan Open Elevation API (gratis)
+ * URL: https://open-elevation.com/
+ */
+async function getElevationFromOpenElevation(lat: number, lng: number): Promise<number> {
+  try {
+    console.log('🔄 Trying Open Elevation API as fallback for:', lat, lng);
+    
+    const response = await fetch(
+      `https://api.open-elevation.com/api/v1/lookup?locations=${lat},${lng}`
+    );
+    
+    if (!response.ok) {
+      throw new Error(`Open Elevation API error: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    console.log('Open Elevation API response:', data);
+    
+    if (data.results && data.results.length > 0) {
+      return data.results[0].elevation;
+    }
+    
+    throw new Error('No elevation data from Open Elevation API');
+  } catch (error) {
+    console.error('❌ Open Elevation API failed:', error);
+    throw error;
+  }
+}
+
+/**
  * Generate mock elevation data untuk development
  */
 function generateMockElevation(lat: number, lng: number): number {
@@ -74,9 +104,19 @@ export async function getElevation(lat: number, lng: number): Promise<number> {
 
     return data.results[0].elevation;
   } catch (error) {
-    console.error('❌ Error fetching elevation, using mock data as fallback:', error);
-    // Fallback ke mock data saat error apapun
-    return generateMockElevation(lat, lng);
+    console.error('❌ Google Elevation API failed:', error);
+    
+    // Fallback Level 1: Try Open Elevation API (free alternative)
+    try {
+      const openElevation = await getElevationFromOpenElevation(lat, lng);
+      console.log('✅ Successfully got elevation from Open Elevation API:', openElevation);
+      return openElevation;
+    } catch (openError) {
+      console.error('❌ Open Elevation API also failed:', openError);
+      // Fallback Level 2: Use mock data as last resort
+      console.warn('🔧 Using mock data as final fallback');
+      return generateMockElevation(lat, lng);
+    }
   }
 }
 

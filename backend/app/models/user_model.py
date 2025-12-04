@@ -10,6 +10,8 @@ class User(Base):
     email = Column(String(100), unique=True)
     password = Column(Text)
     role = Column(String(20))
+    description = Column(Text, nullable=True)
+    address = Column(Text, nullable=True)
     created_at = Column(TIMESTAMP)
     last_login = Column(TIMESTAMP)
 

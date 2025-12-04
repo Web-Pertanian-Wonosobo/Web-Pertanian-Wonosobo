@@ -67,15 +67,37 @@ export function PublicNavigation({ isLoggedIn, onLogout }: PublicNavigationProps
       </nav>
 
       <div className="p-4 border-t">
-        <Link to="/admin/login">
-          <Button 
-            variant="outline" 
-            className="w-full"
-          >
-            <User className="w-4 h-4 mr-2" />
-            Login Admin
-          </Button>
-        </Link>
+        {isLoggedIn ? (
+          <div className="space-y-2">
+            <p className="text-sm text-gray-600 mb-2">Mode: Tamu (Admin)</p>
+            <Link to="/admin/dashboard">
+              <Button 
+                variant="default" 
+                className="w-full mb-2"
+              >
+                <User className="w-4 h-4 mr-2" />
+                Ke Dashboard Admin
+              </Button>
+            </Link>
+            <Button 
+              onClick={onLogout}
+              variant="outline" 
+              className="w-full"
+            >
+              Logout
+            </Button>
+          </div>
+        ) : (
+          <Link to="/admin/login">
+            <Button 
+              variant="outline" 
+              className="w-full"
+            >
+              <User className="w-4 h-4 mr-2" />
+              Login Admin
+            </Button>
+          </Link>
+        )}
       </div>
     </>
   );

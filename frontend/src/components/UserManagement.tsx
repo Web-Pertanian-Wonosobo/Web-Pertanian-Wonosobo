@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Input } from './ui/input';
@@ -9,192 +9,198 @@ import { Badge } from './ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Textarea } from './ui/textarea';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
-import { Pencil, Trash2, Search, UserPlus, Shield, User } from 'lucide-react';
+import { Pencil, Trash2, Search, UserPlus, Shield, User as UserIcon, Loader2, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
-
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: 'admin' | 'moderator';
-  status: 'active' | 'inactive';
-  lastLogin?: string;
-  createdAt: string;
-  description?: string;
-  address?: string;
-}
+import { User, UserCreate, UserUpdate, getUsers, createUser, updateUser, deleteUser } from '../services/usersApi';
 
 export function UserManagement() {
-  const [users, setUsers] = useState<User[]>([
-    {
-      id: '1',
-      name: 'Admin Utama',
-      email: 'admin@ecoscope-wonosobo.id',
-      role: 'admin',
-      status: 'active',
-      lastLogin: '2024-01-15 10:30:00',
-      address: 'Jl. Utama, Wonosobo, Jawa Tengah',
-      createdAt: '2024-01-01 08:00:00',
-      description: 'Administrator utama sistem EcoScope Wonosobo'
-    },
-    {
-      id: '2',
-      name: 'Moderator Pertanian',
-      email: 'moderator@ecoscope-wonosobo.id',
-      role: 'moderator',
-      status: 'active',
-      lastLogin: '2024-01-14 16:45:00',
-      createdAt: '2024-01-05 09:15:00',
-      address: 'Jl. Pertanian, Wonosobo, Jawa Tengah',
-      description: 'Moderator untuk manajemen data pertanian dan harga komoditas'
-    },
-    {
-      id: '3',
-      name: 'Operator Data',
-      email: 'operator@ecoscope-wonosobo.id',
-      role: 'moderator',
-      status: 'inactive',
-      lastLogin: '2024-01-10 14:20:00',
-      createdAt: '2024-01-08 11:30:00',
-      address: 'Jl. Pertanian, Wonosobo, Jawa Tengah',
-      description: 'Operator input data cuaca dan analisis lereng'
-    }
-    
-  ]);
-
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterRole, setFilterRole] = useState<string>('all');
-  const [filterStatus, setFilterStatus] = useState<string>('all');
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
-
-  const [formData, setFormData] = useState({
+  const [roleFilter, setRoleFilter] = useState<string>('all');
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [formData, setFormData] = useState<UserCreate & { password?: string }>({
     name: '',
     email: '',
-    role: 'moderator' as 'admin' | 'moderator',
-    status: 'active' as 'active' | 'inactive',
+    password: '',
+    role: 'moderator',
     description: '',
     address: ''
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Load users from database
+  const loadUsers = async () => {
+    try {
+      setLoading(true);
+      const fetchedUsers = await getUsers();
+      setUsers(fetchedUsers);
+    } catch (error) {
+      console.error('Failed to load users:', error);
+      toast.error('Gagal memuat data pengguna');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Refresh users
+  const refreshUsers = async () => {
+    try {
+      setRefreshing(true);
+      const fetchedUsers = await getUsers();
+      setUsers(fetchedUsers);
+      toast.success('Data pengguna berhasil diperbarui');
+    } catch (error) {
+      console.error('Failed to refresh users:', error);
+      toast.error('Gagal memperbarui data pengguna');
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  // Load users on component mount
+  useEffect(() => {
+    loadUsers();
+  }, []);
 
   // Filter users berdasarkan search dan filter
   const filteredUsers = users.filter(user => {
     const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesRole = filterRole === 'all' || user.role === filterRole;
-    const matchesStatus = filterStatus === 'all' || user.status === filterStatus;
+    const matchesRole = roleFilter === 'all' || user.role === roleFilter;
 
-    return matchesSearch && matchesRole && matchesStatus;
+    return matchesSearch && matchesRole;
   });
 
   const resetForm = () => {
     setFormData({
       name: '',
       email: '',
+      password: '',
       role: 'moderator',
-      status: 'active',
       description: '',
       address: ''
     });
   };
 
-  const handleAddUser = () => {
-    if (!formData.name || !formData.email) {
+  const handleAddUser = async () => {
+    if (!formData.name || !formData.email || !formData.password) {
+      toast.error('Nama, email, dan password harus diisi');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const newUser = await createUser({
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+        role: formData.role,
+        description: formData.description,
+        address: formData.address
+      });
+
+      setUsers([...users, newUser]);
+      resetForm();
+      setShowAddDialog(false);
+      toast.success('User berhasil ditambahkan');
+    } catch (error: any) {
+      toast.error(error.message || 'Gagal menambahkan user');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleEditUser = async () => {
+    if (!editingUser || !formData.name || !formData.email) {
       toast.error('Nama dan email harus diisi');
       return;
     }
 
-    if (users.some(user => user.email === formData.email)) {
-      toast.error('Email sudah digunakan');
-      return;
+    setIsSubmitting(true);
+    try {
+      const updateData: UserUpdate = {
+        name: formData.name,
+        email: formData.email,
+        role: formData.role,
+        description: formData.description,
+        address: formData.address
+      };
+      
+      // Include password only if it's provided
+      if (formData.password && formData.password.trim()) {
+        updateData.password = formData.password;
+      }
+
+      const updatedUser = await updateUser(editingUser.user_id, updateData);
+
+      setUsers(users.map(user => 
+        user.user_id === editingUser.user_id ? updatedUser : user
+      ));
+      
+      resetForm();
+      setShowEditDialog(false);
+      setEditingUser(null);
+      toast.success('User berhasil diperbarui');
+    } catch (error: any) {
+      toast.error(error.message || 'Gagal memperbarui user');
+    } finally {
+      setIsSubmitting(false);
     }
-
-    const newUser: User = {
-      id: Date.now().toString(),
-      name: formData.name,
-      email: formData.email,
-      role: formData.role,
-      status: formData.status,
-      createdAt: new Date().toISOString().slice(0, 19).replace('T', ' '),
-      description: formData.description,
-      address: formData.address
-    };
-
-    setUsers([...users, newUser]);
-    resetForm();
-    setIsAddDialogOpen(false);
-    toast.success('User berhasil ditambahkan');
   };
 
-  const handleEditUser = () => {
-    if (!selectedUser || !formData.name || !formData.email) {
-      toast.error('Nama dan email harus diisi');
-      return;
+  const handleDeleteUser = async (userId: number) => {
+    try {
+      await deleteUser(userId);
+      setUsers(users.filter(user => user.user_id !== userId));
+      toast.success('User berhasil dihapus');
+    } catch (error: any) {
+      toast.error(error.message || 'Gagal menghapus user');
     }
-
-    if (users.some(user => user.email === formData.email && user.id !== selectedUser.id)) {
-      toast.error('Email sudah digunakan');
-      return;
-    }
-
-    const updatedUsers = users.map(user =>
-      user.id === selectedUser.id
-        ? {
-            ...user,
-            name: formData.name,
-            email: formData.email,
-            role: formData.role,
-            status: formData.status,
-            description: formData.description,
-            address: formData.address
-          }
-        : user
-    );
-
-    setUsers(updatedUsers);
-    resetForm();
-    setIsEditDialogOpen(false);
-    setSelectedUser(null);
-    toast.success('User berhasil diperbarui');
   };
 
-  const handleDeleteUser = (userId: string) => {
-    const user = users.find(u => u.id === userId);
-    if (user && user.email === 'admin@ecoscope-wonosobo.id') {
-      toast.error('Admin utama tidak dapat dihapus');
-      return;
-    }
-
-    const updatedUsers = users.filter(user => user.id !== userId);
-    setUsers(updatedUsers);
-    toast.success('User berhasil dihapus');
-  };
-
-  const openEditDialog = (user: User) => {
-    setSelectedUser(user);
+  const handleEdit = (user: User) => {
+    setEditingUser(user);
     setFormData({
       name: user.name,
       email: user.email,
+      password: '', // Don't pre-fill password for security
       role: user.role,
-      status: user.status,
       description: user.description || '',
       address: user.address || ''
     });
-    setIsEditDialogOpen(true);
+    setShowEditDialog(true);
   };
 
   const getRoleIcon = (role: string) => {
-    return role === 'admin' ? <Shield className="w-4 h-4" /> : <User className="w-4 h-4" />;
+    return role === 'admin' ? <Shield className="w-4 h-4" /> : <UserIcon className="w-4 h-4" />;
   };
 
   const getRoleBadgeVariant = (role: string) => {
     return role === 'admin' ? 'default' : 'secondary';
   };
 
-  const getStatusBadgeVariant = (status: string) => {
-    return status === 'active' ? 'default' : 'secondary';
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return 'Belum pernah';
+    const date = new Date(dateString);
+    return date.toLocaleString('id-ID');
   };
+
+  if (loading) {
+    return (
+      <div className="space-y-6 p-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="flex items-center space-x-2">
+            <Loader2 className="w-6 h-6 animate-spin" />
+            <span>Memuat data pengguna...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 p-6">
@@ -206,123 +212,133 @@ export function UserManagement() {
           </p>
         </div>
 
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={resetForm}>
-              <UserPlus className="w-4 h-4 mr-2" />
-              Tambah User
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>Tambah User Baru</DialogTitle>
-              <DialogDescription>
-                Lengkapi form di bawah untuk menambahkan user baru ke sistem.
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="add-name">Nama Lengkap</Label>
-                <Input
-                  id="add-name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="Masukkan nama lengkap"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="add-email">Email</Label>
-                <Input
-                  id="add-email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  placeholder="email@example.com"
-                />
-              </div>
-
-              <div>
-                <Label>Role</Label>
-                <Select value={formData.role} onValueChange={(v: 'admin' | 'moderator') => setFormData({ ...formData, role: v })}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="moderator">Moderator</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label>Status</Label>
-                <Select value={formData.status} onValueChange={(v: 'active' | 'inactive') => setFormData({ ...formData, status: v })}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="active">Aktif</SelectItem>
-                    <SelectItem value="inactive">Tidak Aktif</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label>Deskripsi (Opsional)</Label>
-                <Textarea
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  rows={3}
-                  placeholder="Deskripsi tugas atau tanggung jawab"
-                />
-              </div>
-
-              <div>
-                <Label>Alamat</Label>
-                <Textarea
-                  value={formData.address}
-                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  rows={3}
-                  placeholder="Alamat"
-                />
-              </div>
-            </div>
-
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
-                Batal
-              </Button>
-              <Button onClick={handleAddUser}>
+        <div className="flex items-center space-x-2">
+          <Button variant="outline" onClick={refreshUsers} disabled={refreshing}>
+            {refreshing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+            Refresh
+          </Button>
+          
+          <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+            <DialogTrigger asChild>
+              <Button onClick={resetForm}>
+                <UserPlus className="w-4 h-4 mr-2" />
                 Tambah User
               </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+            </DialogTrigger>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Tambah User Baru</DialogTitle>
+                <DialogDescription>
+                  Lengkapi form di bawah untuk menambahkan user baru ke sistem.
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="add-name">Nama Lengkap</Label>
+                  <Input
+                    id="add-name"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    placeholder="Masukkan nama lengkap"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="add-email">Email</Label>
+                  <Input
+                    id="add-email"
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    placeholder="email@example.com"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="add-password">Password</Label>
+                  <Input
+                    id="add-password"
+                    type="password"
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    placeholder="Masukkan password"
+                  />
+                </div>
+
+                <div>
+                  <Label>Role</Label>
+                  <Select value={formData.role} onValueChange={(v: 'admin' | 'moderator') => setFormData({ ...formData, role: v })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="admin">Admin</SelectItem>
+                      <SelectItem value="moderator">Moderator</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="add-description">Deskripsi (Opsional)</Label>
+                  <Textarea
+                    id="add-description"
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    placeholder="Deskripsi tugas atau tanggung jawab"
+                    rows={3}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="add-address">Alamat (Opsional)</Label>
+                  <Textarea
+                    id="add-address"
+                    value={formData.address}
+                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                    placeholder="Alamat lengkap"
+                    rows={2}
+                  />
+                </div>
+              </div>
+
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowAddDialog(false)} disabled={isSubmitting}>
+                  Batal
+                </Button>
+                <Button onClick={handleAddUser} disabled={isSubmitting}>
+                  {isSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                  Tambah User
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {/* FILTER SECTION */}
-      {/* <Card>
+      <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Filter Data</CardTitle>
+          <CardTitle className="text-lg">Filter dan Pencarian</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label>Pencarian</Label>
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <Input
-                  placeholder="Cari berdasarkan nama atau email..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Cari berdasarkan nama atau email"
                   className="pl-10"
                 />
               </div>
             </div>
 
-            <div className="w-full sm:w-40">
-              <Select value={filterRole} onValueChange={setFilterRole}>
+            <div className="space-y-2">
+              <Label>Filter Role</Label>
+              <Select value={roleFilter} onValueChange={setRoleFilter}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -334,177 +350,170 @@ export function UserManagement() {
               </Select>
             </div>
 
-            <div className="w-full sm:w-40">
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Semua Status</SelectItem>
-                  <SelectItem value="active">Aktif</SelectItem>
-                  <SelectItem value="inactive">Tidak Aktif</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="flex items-end">
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setSearchTerm('');
+                  setRoleFilter('all');
+                }}
+                className="w-full"
+              >
+                Reset Filter
+              </Button>
             </div>
           </div>
         </CardContent>
-      </Card> */}
-
-           {/* TABEL USER */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Daftar User ({filteredUsers.length})</CardTitle>
-        </CardHeader>
-      <CardContent>
-          <div className="border rounded-lg overflow-hidden">
-            <div className="overflow-x-auto">
-              <div className="max-h-96 overflow-y-auto">
-                <table className="w-full table-fixed border-collapse">
-                  <thead className="sticky top-0 bg-white z-20 shadow-md">
-                    <tr>
-                      <th className="text-left px-4 py-3 font-semibold border-b w-2/6">User</th>
-                      <th className="text-center px-4 py-3 font-semibold border-b w-1/12">Role</th>
-                      <th className="text-center px-4 py-3 font-semibold border-b w-1/12">Status</th>
-                      <th className="text-center px-4 py-3 font-semibold border-b w-1/6">Login Terakhir</th>
-                      <th className="text-center px-4 py-3 font-semibold border-b w-1/6">Dibuat</th>
-                      <th className="text-left px-4 py-3 font-semibold border-b w-2/12">Alamat</th>
-                      <th className="text-center px-4 py-3 font-semibold border-b w-1/12">Aksi</th>
-                    </tr>
-                  </thead>
-
-                  <tbody>
-                    {filteredUsers.length === 0 ? (
-                      <tr>
-                        <td colSpan={7} className="text-center py-8">
-                          <User className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                          <p className="text-gray-500">Tidak ada user yang ditemukan</p>
-                        </td>
-                      </tr>
-                    ) : (
-                      filteredUsers.map((user) => (
-                        <tr key={user.id} className="align-top">
-                          <td className="px-4 py-3">
-                            <div>
-                              <div className="font-medium">{user.name}</div>
-                              <div className="text-sm text-gray-500">{user.email}</div>
-                              {user.description && (
-                                <div className="text-xs text-gray-400 mt-1 max-w-xs truncate">
-                                  {user.description}
-                                </div>
-                              )}
-                            </div>
-                          </td>
-
-                          <td className="px-4 py-3 text-center">
-                            <Badge variant={getRoleBadgeVariant(user.role)} className="flex items-center gap-1 justify-center w-fit mx-auto">
-                              {getRoleIcon(user.role)}
-                              {user.role === 'admin' ? 'Admin' : 'Moderator'}
-                            </Badge>
-                          </td>
-
-                          <td className="px-4 py-3 text-center">
-                            <Badge variant={getStatusBadgeVariant(user.status)}>
-                              {user.status === 'active' ? 'Aktif' : 'Tidak Aktif'}
-                            </Badge>
-                          </td>
-
-                          <td className="px-4 py-3 text-center">
-                            {user.lastLogin || <span className="text-gray-400">Belum pernah login</span>}
-                          </td>
-
-                          <td className="px-4 py-3 text-center">{user.createdAt}</td>
-
-                          <td className="px-4 py-3">
-                            <div className="text-sm">
-                              {user.address || '-'}
-                            </div>
-                          </td>
-
-                          <td className="px-4 py-3 text-center">
-                            <div className="flex items-center justify-center gap-2">
-                              <Button variant="ghost" size="sm" onClick={() => openEditDialog(user)}>
-                                <Pencil className="w-4 h-4" />
-                              </Button>
-
-                              <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    disabled={user.email === 'admin@ecoscope-wonosobo.id'}
-                                    className="text-red-600"
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                  </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>Hapus User</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                      Apakah Anda yakin ingin menghapus user "{user.name}"?
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel>Batal</AlertDialogCancel>
-                                    <AlertDialogAction
-                                      onClick={() => handleDeleteUser(user.id)}
-                                      className="bg-red-600 hover:bg-red-700"
-                                    >
-                                      Hapus
-                                    </AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
-                            </div>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-
       </Card>
 
-      {/* EDIT USER */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+      {/* USERS TABLE */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg">
+              Daftar User ({filteredUsers.length} dari {users.length} user)
+            </CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-1/6">Nama</TableHead>
+                  <TableHead className="w-1/6">Email</TableHead>
+                  <TableHead className="w-1/12">Role</TableHead>
+                  <TableHead className="w-1/6">Deskripsi</TableHead>
+                  <TableHead className="w-1/6">Alamat</TableHead>
+                  <TableHead className="w-1/8">Dibuat</TableHead>
+                  <TableHead className="w-1/12">Aksi</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredUsers.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8">
+                      {searchTerm || roleFilter !== 'all' ? 'Tidak ada user yang sesuai dengan filter' : 'Belum ada data user'}
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredUsers.map((user) => (
+                    <TableRow key={user.user_id}>
+                      <TableCell className="font-medium">{user.name}</TableCell>
+                      <TableCell>{user.email}</TableCell>
+                      <TableCell>
+                        <Badge variant={getRoleBadgeVariant(user.role)} className="flex items-center w-fit">
+                          {getRoleIcon(user.role)}
+                          <span className="ml-1">{user.role === 'admin' ? 'Admin' : 'Moderator'}</span>
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="max-w-48 truncate" title={user.description || ''}>
+                          {user.description || '-'}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="max-w-48 truncate" title={user.address || ''}>
+                          {user.address || '-'}
+                        </div>
+                      </TableCell>
+                      <TableCell>{formatDate(user.created_at)}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center space-x-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEdit(user)}
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </Button>
+                          
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                disabled={user.user_id === 1} // Prevent deleting primary admin
+                              >
+                                <Trash2 className="w-4 h-4 text-red-600" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Konfirmasi Hapus User</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Apakah Anda yakin ingin menghapus user <strong>{user.name}</strong>? 
+                                  Tindakan ini tidak dapat dibatalkan.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Batal</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleDeleteUser(user.user_id)}
+                                  className="bg-red-600 hover:bg-red-700"
+                                >
+                                  Hapus
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* EDIT DIALOG */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Edit User</DialogTitle>
             <DialogDescription>
-              Perbarui informasi user yang dipilih.
+              Edit informasi user yang dipilih.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             <div>
-              <Label>Nama Lengkap</Label>
+              <Label htmlFor="edit-name">Nama Lengkap</Label>
               <Input
+                id="edit-name"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder="Masukkan nama lengkap"
               />
             </div>
 
             <div>
-              <Label>Email</Label>
+              <Label htmlFor="edit-email">Email</Label>
               <Input
+                id="edit-email"
                 type="email"
                 value={formData.email}
-                disabled={selectedUser?.email === 'admin@ecoscope-wonosobo.id'}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                placeholder="email@example.com"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="edit-password">Password (kosongkan jika tidak ingin mengubah)</Label>
+              <Input
+                id="edit-password"
+                type="password"
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                placeholder="Password baru (opsional)"
               />
             </div>
 
             <div>
               <Label>Role</Label>
-              <Select
-                value={formData.role}
-                disabled={selectedUser?.email === 'admin@ecoscope-wonosobo.id'}
-                onValueChange={(v: 'admin' | 'moderator') => setFormData({ ...formData, role: v })}
-              >
+              <Select value={formData.role} onValueChange={(v: 'admin' | 'moderator') => setFormData({ ...formData, role: v })}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -516,52 +525,39 @@ export function UserManagement() {
             </div>
 
             <div>
-              <Label>Status</Label>
-              <Select
-                value={formData.status}
-                disabled={selectedUser?.email === 'admin@ecoscope-wonosobo.id'}
-                onValueChange={(v: 'active' | 'inactive') => setFormData({ ...formData, status: v })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="active">Aktif</SelectItem>
-                  <SelectItem value="inactive">Tidak Aktif</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label>Deskripsi</Label>
+              <Label htmlFor="edit-description">Deskripsi (Opsional)</Label>
               <Textarea
+                id="edit-description"
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                placeholder="Deskripsi tugas atau tanggung jawab"
                 rows={3}
               />
             </div>
 
             <div>
-              <Label>Alamat</Label>
+              <Label htmlFor="edit-address">Alamat (Opsional)</Label>
               <Textarea
+                id="edit-address"
                 value={formData.address}
                 onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                rows={3}
+                placeholder="Alamat lengkap"
+                rows={2}
               />
             </div>
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+            <Button variant="outline" onClick={() => setShowEditDialog(false)} disabled={isSubmitting}>
               Batal
             </Button>
-            <Button onClick={handleEditUser}>
+            <Button onClick={handleEditUser} disabled={isSubmitting}>
+              {isSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
               Simpan Perubahan
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
     </div>
   );
 }

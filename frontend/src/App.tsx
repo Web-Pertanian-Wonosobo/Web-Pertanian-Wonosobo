@@ -57,10 +57,16 @@ export default function App() {
             setUserRole("admin");
             console.log("🔐 Admin session restored");
             
-            // Jika user berada di halaman public, redirect ke admin
-            if (!location.pathname.startsWith("/admin") && location.pathname !== "/") {
-              console.log("🔄 Redirecting to admin dashboard");
+            // HANYA redirect ke admin jika user mencoba akses halaman yang memerlukan login
+            // Biarkan user tetap di halaman publik jika mereka memang ingin mode tamu
+            const adminOnlyPaths = ["/admin", "/login"];
+            const currentPath = location.pathname;
+            
+            if (adminOnlyPaths.some(path => currentPath.startsWith(path)) || currentPath === "/") {
+              console.log("🔄 Redirecting to admin dashboard from protected/root page");
               navigate("/admin/dashboard", { replace: true });
+            } else {
+              console.log("🏠 Staying on public page as requested");
             }
           } else {
             // Invalid atau corrupted data
@@ -98,9 +104,13 @@ export default function App() {
     );
   }
 
-  // Determine app mode based on current path
+  // Determine app mode based on current path and login status
   const isAdminRoute = location.pathname.startsWith("/admin");
-  const appMode = isLoggedIn && isAdminRoute ? "admin" : "public";
+  
+  // Show admin navigation only if user is logged in as admin AND on admin routes
+  // Show public navigation for all other cases (including when admin views public pages)
+  const showAdminNavigation = isLoggedIn && userRole === "admin" && isAdminRoute;
+  const NavigationComponent = showAdminNavigation ? AdminNavigation : PublicNavigation;
 
   const handleLogin = (role: "admin" | "guest") => {
     console.log("🔑 Login dengan role:", role);
@@ -154,9 +164,6 @@ export default function App() {
     }
     return <>{children}</>;
   };
-
-  // Tentukan komponen navigasi
-  const NavigationComponent = appMode === "admin" ? AdminNavigation : PublicNavigation;
   
   // Check if current route is login page (no sidebar needed)
   const isLoginPage = location.pathname === "/loginRegister" || location.pathname === "/admin/login";

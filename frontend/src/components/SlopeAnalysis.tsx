@@ -5,6 +5,7 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Badge } from "./ui/badge";
 import { Alert, AlertDescription } from "./ui/alert";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import {
   MapPin,
   Upload,
@@ -25,15 +26,77 @@ import { toast } from "sonner";
 import {
   calculateSlope,
   getSlopeRecommendations,
-  validateApiKey,
 } from "../services/elevationApi";
 
 export function SlopeAnalysis() {
+  // Data Kecamatan dan Desa di Wonosobo
+  const wonosoboData = {
+    'Wonosobo': {
+      coordinates: { lat: -7.3617, lng: 109.9075 },
+      villages: ['Wonosobo Utara', 'Wonosobo Timur', 'Jajar', 'Pucangan', 'Kulur']
+    },
+    'Kejajar': {
+      coordinates: { lat: -7.2500, lng: 109.8000 },
+      villages: ['Kejajar', 'Tambi', 'Sembungan', 'Patak Banteng', 'Dieng Kulon', 'Dieng Wetan']
+    },
+    'Garung': {
+      coordinates: { lat: -7.3333, lng: 109.8333 },
+      villages: ['Garung', 'Giriroto', 'Kaligesing', 'Tieng', 'Gumelem Wetan']
+    },
+    'Kertek': {
+      coordinates: { lat: -7.3000, lng: 109.8500 },
+      villages: ['Kertek', 'Sudimoro', 'Gondosuli', 'Tanjungsari', 'Kebonsari']
+    },
+    'Sapuran': {
+      coordinates: { lat: -7.4000, lng: 109.9000 },
+      villages: ['Sapuran', 'Candirejo', 'Pagergunung', 'Kalibeber', 'Jetis']
+    },
+    'Kalikajar': {
+      coordinates: { lat: -7.2667, lng: 109.9333 },
+      villages: ['Kalikajar', 'Tlogo', 'Buntu', 'Ngadirenggo', 'Sigedang']
+    },
+    'Kaliwiro': {
+      coordinates: { lat: -7.4500, lng: 109.8500 },
+      villages: ['Kaliwiro', 'Pringapus', 'Leksono', 'Candimulyo', 'Wonosari']
+    },
+    'Leksono': {
+      coordinates: { lat: -7.4333, lng: 109.8000 },
+      villages: ['Leksono', 'Kaliharjo', 'Gunungsari', 'Ngadireso', 'Wonolelo']
+    },
+    'Sukoharjo': {
+      coordinates: { lat: -7.4667, lng: 109.9333 },
+      villages: ['Sukoharjo', 'Candiroto', 'Gondang', 'Mudal', 'Semampir']
+    },
+    'Kalibawang': {
+      coordinates: { lat: -7.3833, lng: 109.7667 },
+      villages: ['Kalibawang', 'Clapar', 'Selomerto', 'Banjarnegara', 'Kepakisan']
+    },
+    'Mojotengah': {
+      coordinates: { lat: -7.4167, lng: 109.7833 },
+      villages: ['Mojotengah', 'Gumelem', 'Blumbang', 'Windusari', 'Bener']
+    },
+    'Watumalang': {
+      coordinates: { lat: -7.3167, lng: 109.7500 },
+      villages: ['Watumalang', 'Candimulyo', 'Sigrogol', 'Mlandi', 'Bringin']
+    },
+    'Wadaslintang': {
+      coordinates: { lat: -7.4000, lng: 109.7000 },
+      villages: ['Wadaslintang', 'Karangduwur', 'Sidorejo', 'Karangjati', 'Mlandi']
+    },
+    'Kepil': {
+      coordinates: { lat: -7.3500, lng: 109.7000 },
+      villages: ['Kepil', 'Kepilkroya', 'Wonokerto', 'Kepil Kidul', 'Kepil Wetan']
+    },
+    'Selomerto': {
+      coordinates: { lat: -7.5000, lng: 109.8000 },
+      villages: ['Selomerto', 'Kalitekuk', 'Selopuro', 'Banjarsari', 'Purworeja']
+    }
+  };
+
   const [selectedLocation, setSelectedLocation] = useState<any>(null);
   const [formData, setFormData] = useState({
-    locationName: "",
-    village: "",
-    district: "",
+    district: '',
+    village: '',
   });
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
@@ -273,27 +336,32 @@ ${new Date().toLocaleString("id-ID")}`;
   /**
    * Analisis slope berdasarkan koordinat yang diklik di Google Maps
    */
-  const handleMapClick = async (lat: number, lng: number) => {
-    // Validasi API key
-    if (!validateApiKey()) {
-      toast.error(
-        "Google Maps API key belum di-set. Tambahkan VITE_GOOGLE_MAPS_API_KEY ke file .env"
-      );
-      return;
-    }
-
+  const handleMapClick = async (lat: number, lng: number, locationName?: string) => {
     setIsAnalyzing(true);
 
     try {
       toast.info("Menganalisis kemiringan tanah...");
 
-      // Hitung slope menggunakan Google Elevation API
+      // Hitung slope menggunakan Google Elevation API (dengan fallback ke mock data)
       const slopeResult = await calculateSlope(lat, lng, 100);
+
+      // Tentukan metode analisis berdasarkan sumber data aktual
+      let analysisMethod = "Real Elevation Data";
+      if (slopeResult.elevationData && slopeResult.elevationData.length > 0) {
+        // Check if we got real elevation data or mock
+        const firstElevation = slopeResult.elevationData[0].elevation;
+        // Mock data usually has specific patterns, real data is more varied
+        if (firstElevation > 0 && firstElevation !== Math.floor(firstElevation)) {
+          analysisMethod = "Google/Open Elevation API";
+        } else {
+          analysisMethod = "Mock Data (API Fallback)";
+        }
+      }
 
       // Buat objek lokasi baru
       const newLocation = {
         id: Date.now(),
-        name: formData.locationName || `Lokasi Baru`,
+        name: locationName || `${formData.village || 'Lokasi'}, ${formData.district || 'Wonosobo'}`,
         coordinates: `${lat.toFixed(4)}, ${lng.toFixed(4)}`,
         slope: slopeResult.slopePercentage,
         slopeDegrees: slopeResult.slopeDegrees,
@@ -306,7 +374,7 @@ ${new Date().toLocaleString("id-ID")}`;
             : "bg-green-500",
         suggestions: getSlopeRecommendations(slopeResult.slopePercentage),
         lastUpdate: "Baru saja",
-        analysisMethod: "Google Elevation API",
+        analysisMethod: analysisMethod,
         elevationData: slopeResult.elevationData,
       };
 
@@ -320,8 +388,30 @@ ${new Date().toLocaleString("id-ID")}`;
     } catch (error) {
       console.error("Error analyzing slope:", error);
       toast.error(
-        "Gagal menganalisis slope. Pastikan API key valid dan ada koneksi internet."
+        "Terjadi error saat analisis. Sistem akan menggunakan data simulasi sebagai fallback."
       );
+      
+      // Fallback: buat hasil simulasi
+      const mockSlopePercentage = 15 + (Math.random() * 20); // 15-35%
+      const mockSlopeDegrees = Math.atan(mockSlopePercentage / 100) * (180 / Math.PI);
+      const mockRiskLevel = mockSlopePercentage <= 20 ? 'low' : mockSlopePercentage <= 30 ? 'medium' : 'high';
+      
+      const newLocation = {
+        id: Date.now(),
+        name: locationName || `${formData.village || 'Lokasi'}, ${formData.district || 'Wonosobo'}`,
+        coordinates: `${lat.toFixed(4)}, ${lng.toFixed(4)}`,
+        slope: Math.round(mockSlopePercentage * 10) / 10,
+        slopeDegrees: Math.round(mockSlopeDegrees * 10) / 10,
+        risk: mockRiskLevel,
+        color: mockRiskLevel === "high" ? "bg-red-500" : mockRiskLevel === "medium" ? "bg-yellow-500" : "bg-green-500",
+        suggestions: getSlopeRecommendations(mockSlopePercentage),
+        lastUpdate: "Baru saja",
+        analysisMethod: "Mock Data (Fallback)",
+        elevationData: []
+      };
+
+      setSelectedLocation(newLocation);
+      toast.success(`Analisis selesai (mode simulasi)! Kemiringan: ${Math.round(mockSlopePercentage * 10) / 10}% (Risiko: ${getRiskLabel(mockRiskLevel)})`);
     } finally {
       setIsAnalyzing(false);
     }
@@ -334,18 +424,34 @@ ${new Date().toLocaleString("id-ID")}`;
     console.log("handleAnalyzeLocation called");
     console.log("Form data:", formData);
 
-    if (!formData.locationName) {
-      toast.error("Masukkan nama lokasi terlebih dahulu");
+    if (!formData.district) {
+      toast.error("Pilih kecamatan terlebih dahulu");
       return;
     }
 
-    // Untuk demo, gunakan koordinat random di area Wonosobo
-    // Dalam implementasi real, bisa gunakan geocoding untuk convert nama lokasi ke koordinat
-    const randomLat = -7.35 + (Math.random() - 0.5) * 0.1;
-    const randomLng = 109.9 + (Math.random() - 0.5) * 0.1;
+    if (!formData.village) {
+      toast.error("Pilih desa terlebih dahulu");
+      return;
+    }
 
-    console.log("Generated coordinates:", randomLat, randomLng);
-    await handleMapClick(randomLat, randomLng);
+    // Dapatkan koordinat dari data kecamatan
+    const districtData = wonosoboData[formData.district as keyof typeof wonosoboData];
+    if (!districtData) {
+      toast.error("Data kecamatan tidak ditemukan");
+      return;
+    }
+
+    // Tambahkan sedikit variasi koordinat untuk desa yang berbeda
+    const villageIndex = districtData.villages.indexOf(formData.village);
+    const baseCoords = districtData.coordinates;
+    const lat = baseCoords.lat + (villageIndex * 0.01) + (Math.random() * 0.005);
+    const lng = baseCoords.lng + (villageIndex * 0.01) + (Math.random() * 0.005);
+
+    console.log("Using coordinates:", lat, lng, "for", formData.district, formData.village);
+    
+    // Update form data untuk nama lokasi
+    const locationName = `${formData.village}, ${formData.district}`;
+    await handleMapClick(lat, lng, locationName);
   };
 
   return (
@@ -369,17 +475,14 @@ ${new Date().toLocaleString("id-ID")}`;
         </Alert>
       )}
 
-      {/* API Key Warning */}
-      {!validateApiKey() && (
-        <Alert className="mb-6 border-yellow-200 bg-yellow-50">
-          <AlertTriangle className="h-4 w-4 text-yellow-600" />
-          <AlertDescription className="text-yellow-800">
-            <strong>Mode Development:</strong> Menggunakan data simulasi untuk
-            testing. Untuk data elevasi real, setup Google Maps API Key dan
-            aktifkan billing (tetap gratis $200/bulan).
-          </AlertDescription>
-        </Alert>
-      )}
+      {/* Info API Sources */}
+      <Alert className="mb-6 border-blue-200 bg-blue-50">
+        <MapPinned className="h-4 w-4 text-blue-600" />
+        <AlertDescription className="text-blue-800">
+          <strong>Sumber Data Elevasi:</strong> Sistem akan mencoba Google Elevation API (jika tersedia), 
+          kemudian Open Elevation API (gratis), dan mock data sebagai fallback terakhir.
+        </AlertDescription>
+      </Alert>
 
       {/* Analysis Loading */}
       {isAnalyzing && (
@@ -579,42 +682,46 @@ ${new Date().toLocaleString("id-ID")}`;
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <Label htmlFor="locationName">Nama Lokasi</Label>
-                <Input
-                  id="locationName"
-                  value={formData.locationName}
-                  onChange={(e) =>
-                    setFormData({ ...formData, locationName: e.target.value })
-                  }
-                  placeholder="Contoh: Bukit Sari"
-                />
+                <Label htmlFor="district">Kecamatan</Label>
+                <Select 
+                  value={formData.district} 
+                  onValueChange={(value) => setFormData({ ...formData, district: value, village: '' })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Pilih Kecamatan" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.keys(wonosoboData).map((district) => (
+                      <SelectItem key={district} value={district}>
+                        {district}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <Label htmlFor="village">Desa</Label>
-                <Input
-                  id="village"
-                  value={formData.village}
-                  onChange={(e) =>
-                    setFormData({ ...formData, village: e.target.value })
-                  }
-                  placeholder="Contoh: Sumbang"
-                />
-              </div>
-              <div>
-                <Label htmlFor="district">Kecamatan</Label>
-                <Input
-                  id="district"
-                  value={formData.district}
-                  onChange={(e) =>
-                    setFormData({ ...formData, district: e.target.value })
-                  }
-                  placeholder="Contoh: Sumbang"
-                />
+                <Select 
+                  value={formData.village} 
+                  onValueChange={(value) => setFormData({ ...formData, village: value })}
+                  disabled={!formData.district}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={formData.district ? "Pilih Desa" : "Pilih Kecamatan dulu"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {formData.district && wonosoboData[formData.district as keyof typeof wonosoboData]?.villages.map((village) => (
+                      <SelectItem key={village} value={village}>
+                        {village}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <Button
                 className="w-full"
                 onClick={handleAnalyzeLocation}
-                disabled={isAnalyzing || !formData.locationName}
+                disabled={isAnalyzing || !formData.district || !formData.village}
               >
                 {isAnalyzing ? (
                   <>
@@ -629,7 +736,7 @@ ${new Date().toLocaleString("id-ID")}`;
                 )}
               </Button>
               <p className="text-xs text-muted-foreground text-center">
-                Menggunakan Google Elevation API
+                Menggunakan Google Elevation API untuk {formData.district && formData.village ? `${formData.village}, ${formData.district}` : 'area yang dipilih'}
               </p>
               <div className="border-t pt-3">
                 <Button variant="outline" className="w-full">

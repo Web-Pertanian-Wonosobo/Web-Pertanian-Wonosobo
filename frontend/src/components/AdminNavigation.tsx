@@ -13,6 +13,7 @@ import {
   LogOut,
   Menu,
   MapPin,
+  Home,
   DollarSign,
 } from "lucide-react";
 
@@ -96,14 +97,25 @@ export function AdminNavigation({ onLogout }: AdminNavigationProps) {
       </nav>
 
       <div className="p-4 border-t">
-        <Button
-          variant="outline"
-          className="w-full text-red-600 hover:text-red-700 hover:bg-red-50"
-          onClick={handleLogout}
-        >
-          <LogOut className="w-4 h-4 mr-2" />
-          Logout
-        </Button>
+        <div className="space-y-2">
+          <Link to="/dashboard">
+            <Button
+              variant="ghost"
+              className="w-full text-blue-600 hover:text-blue-700 hover:bg-blue-50 mb-2"
+            >
+              <Home className="w-4 h-4 mr-2" />
+              Mode Tamu
+            </Button>
+          </Link>
+          <Button
+            variant="outline"
+            className="w-full text-red-600 hover:text-red-700 hover:bg-red-50"
+            onClick={handleLogout}
+          >
+            <LogOut className="w-4 h-4 mr-2" />
+            Logout
+          </Button>
+        </div>
       </div>
     </>
   );
