@@ -3,13 +3,16 @@ Script untuk generate sample data harga komoditas
 Untuk testing dan demo forecasting
 
 Run: python generate_sample_data.py
+Or with custom URL: BASE_URL=http://localhost:8080 python generate_sample_data.py
 """
 
 import requests
 import time
+import os
 from datetime import datetime
 
-BASE_URL = "http://127.0.0.1:8000"
+# Support environment variable untuk flexibility (development & production)
+BASE_URL = os.getenv("BASE_URL", "http://127.0.0.1:8080")
 
 # Komoditas utama Wonosobo dengan harga base (Rupiah per kg)
 COMMODITIES = [
@@ -61,6 +64,7 @@ def main():
     print("=" * 60)
     print("🌾 Sample Data Generator - Web Pertanian Wonosobo")
     print("=" * 60)
+    print(f"🔗 Using backend URL: {BASE_URL}")
     print()
     
     # Check server
@@ -70,6 +74,9 @@ def main():
         print("💡 Please start backend first:")
         print("   cd backend")
         print("   uvicorn app.main:app --reload")
+        print()
+        print("💡 Or specify custom URL:")
+        print(f"   BASE_URL=http://localhost:8000 python {__file__}")
         return
     print("✅ Backend server is running")
     print()
