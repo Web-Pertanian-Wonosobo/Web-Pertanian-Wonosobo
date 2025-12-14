@@ -11,7 +11,8 @@ import { Textarea } from './ui/textarea';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
 import { Pencil, Trash2, Search, UserPlus, Shield, User as UserIcon, Loader2, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
-import { User, UserCreate, UserUpdate, getUsers, createUser, updateUser, deleteUser } from '../services/usersApi';
+import { getUsers, createUser, updateUser, deleteUser } from '../services/usersApi';
+import type { User, UserCreate, UserUpdate } from '../services/usersApi';
 
 export function UserManagement() {
   const [users, setUsers] = useState<User[]>([]);

@@ -57,7 +57,7 @@ export interface QuickPredictionResult {
   };
 }
 
-const BACKEND_API = "http://127.0.0.1:8080";
+const BACKEND_API = "http://72.61.215.233";
 
 /**
  * Forecast harga komoditas untuk beberapa hari ke depan

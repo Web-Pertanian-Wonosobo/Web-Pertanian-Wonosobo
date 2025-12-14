@@ -22,7 +22,7 @@ export interface PriceDataCreate {
   date: string;
 }
 
-const BACKEND_API = "http://127.0.0.1:8080/market";
+const BACKEND_API = "http://72.61.215.233/market";
 
 /**
  * Fetch all price data from local database
