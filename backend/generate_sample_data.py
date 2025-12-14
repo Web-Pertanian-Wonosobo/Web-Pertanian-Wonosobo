@@ -112,7 +112,7 @@ def main():
     print("   3. Select a commodity and try forecasting!")
     print()
     print("🔍 Test forecasting API:")
-    print("   curl 'http://127.0.0.1:8000/forecast/commodity/Kentang?days_forward=30'")
+    print(f"   curl '{BASE_URL}/forecast/commodity/Kentang?days_forward=30'")
     print()
 
 if __name__ == "__main__":

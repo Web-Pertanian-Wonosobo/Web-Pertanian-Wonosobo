@@ -1,8 +1,10 @@
 import requests
 import json
+import os
 
 def test_add_market_price():
-    url = "http://127.0.0.1:8000/market/add"
+    base_url = os.getenv("BASE_URL", "http://127.0.0.1:8080")
+    url = f"{base_url}/market/add"
     
     # Test data yang sederhana
     test_data = {
@@ -36,7 +38,8 @@ def test_add_market_price():
                 print(f"Error Text: {response.text}")
                 
     except requests.exceptions.ConnectionError:
-        print("❌ Cannot connect to server. Make sure backend is running on port 8000")
+        print(f"❌ Cannot connect to server at {base_url}")
+        print("💡 Make sure backend is running. Use BASE_URL env var to change URL.")
     except Exception as e:
         print(f"❌ Unexpected error: {e}")
 
