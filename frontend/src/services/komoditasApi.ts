@@ -26,7 +26,7 @@ export interface KomoditasResponse {
 }
 
 const API_BASE = "https://disdagkopukm.wonosobokab.go.id/api";
-const BACKEND_API = "http://72.61.215.233/market";
+const BACKEND_API = "http://72.61.215.233/api/market";
 
 // Gunakan database backend (data sudah di-sync otomatis dari API)
 const USE_DATABASE = true;

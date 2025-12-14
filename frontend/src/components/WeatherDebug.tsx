@@ -10,7 +10,7 @@ export function WeatherDebug() {
         setStatus('Testing backend API...');
         
         // Test backend connection
-        const response = await fetch('http://72.61.215.233/weather/current');
+        const response = await fetch('http://72.61.215.233/api/weather/current');
         
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}: ${response.statusText}`);

@@ -7,7 +7,7 @@ import { Eye, EyeOff, Mail, Lock, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 // Auth API functions
-const BACKEND_API = "http://72.61.215.233/auth";
+const BACKEND_API = "http://72.61.215.233/api/auth";
 
 async function loginAdmin(credentials: { email: string; password: string }) {
   try {
