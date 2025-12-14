@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from './ui/button';
 import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from './ui/sheet';
+import logoImage from '../assets/logo.svg';
 import { 
   MapPin, 
   CloudRain, 
@@ -34,7 +35,7 @@ export function PublicNavigation({ isLoggedIn, onLogout }: PublicNavigationProps
           </div> */}
           <div className="inline-flex items-center justify-center w-20 h-24 rounded-full">
         <img 
-        src="src/assets/logo.svg" 
+        src={logoImage} 
         alt="EcoScope" 
         style={{ width: '75px', height: '75px', objectFit: 'contain' }} 
           />

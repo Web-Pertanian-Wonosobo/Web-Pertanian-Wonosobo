@@ -7,6 +7,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "./ui/sheet";
+import logoImage from "../assets/logo.svg";
 import {
   LayoutDashboard,
   Users,
@@ -64,7 +65,7 @@ export function AdminNavigation({ onLogout }: AdminNavigationProps) {
           </div> */}
           <div className="inline-flex items-center justify-center w-20 h-24 rounded-full">
             <img
-              src="src/assets/logo.svg"
+              src={logoImage}
               alt="EcoScope"
               style={{ width: "75px", height: "75px", objectFit: "contain" }}
             />
