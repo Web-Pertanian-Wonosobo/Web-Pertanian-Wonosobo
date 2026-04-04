@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "http://localhost:8000").replace(/\/$/, "");
+
 export function WeatherDebug() {
   const [status, setStatus] = useState<string>('Initializing...');
   const [data, setData] = useState<any>(null);
@@ -10,7 +12,7 @@ export function WeatherDebug() {
         setStatus('Testing backend API...');
         
         // Test backend connection
-        const response = await fetch('http://72.61.215.233/api/weather/current');
+        const response = await fetch(`${API_BASE_URL}/weather/current`);
         
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}: ${response.statusText}`);

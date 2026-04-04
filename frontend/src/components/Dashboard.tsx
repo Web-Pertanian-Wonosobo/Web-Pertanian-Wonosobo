@@ -15,6 +15,8 @@ import {
 import { fetchAllKomoditas, type Komoditas } from "../services/komoditasApi";
 import { fetchWilayah, type Wilayah } from "../services/wilayahApi";
 
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "http://localhost:8000").replace(/\/$/, "");
+
 interface WeatherDistrict {
   name: string;
   temperature: number;
@@ -74,7 +76,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
     const fetchWeather = async () => {
       setLoadingWeather(true);
       try {
-        const response = await fetch("http://72.61.215.233/api/weather/current");
+        const response = await fetch(`${API_BASE_URL}/weather/current`);
         if (!response.ok) throw new Error("Gagal mengambil data cuaca");
         const data = await response.json();
 

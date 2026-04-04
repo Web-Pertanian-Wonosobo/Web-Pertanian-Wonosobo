@@ -1,6 +1,8 @@
 // Weather API Service
 // Handles all backend API calls for weather data and predictions
 
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "http://localhost:8000").replace(/\/$/, "");
+
 export interface WeatherPrediction {
   date: string;
   predicted_temp: number;
@@ -60,7 +62,7 @@ export const fetchWeatherPredictions = async (
     // Gunakan endpoint koordinat yang menggunakan data real OpenWeather
     if (location && WONOSOBO_COORDINATES[location]) {
       const coords = WONOSOBO_COORDINATES[location];
-      const url = `http://72.61.215.233/api/weather/predict/coordinates?lat=${coords.lat}&lon=${coords.lon}&location_name=${encodeURIComponent(location)}&days=${days}`;
+      const url = `${API_BASE_URL}/weather/predict/coordinates?lat=${coords.lat}&lon=${coords.lon}&location_name=${encodeURIComponent(location)}&days=${days}`;
       
       console.log(`🌦️ Fetching REAL weather predictions for ${location} using coordinates (${coords.lat}, ${coords.lon})`);
       
@@ -78,7 +80,7 @@ export const fetchWeatherPredictions = async (
     } else {
       // Fallback ke endpoint legacy jika tidak ada koordinat
       console.warn(`⚠️ No coordinates found for ${location}, using legacy endpoint`);
-    let url = `http://72.61.215.233/api/weather/predict?days=${days}`;
+    let url = `${API_BASE_URL}/weather/predict?days=${days}`;
       if (location) {
         url += `&location=${encodeURIComponent(location)}`;
       }
@@ -102,7 +104,7 @@ export const fetchWeatherPredictions = async (
  */
 export const fetchCurrentWeather = async (): Promise<WeatherData[]> => {
   try {
-    const response = await fetch(`http://72.61.215.233/api/weather/current`);
+    const response = await fetch(`${API_BASE_URL}/weather/current`);
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -119,7 +121,7 @@ export const fetchCurrentWeather = async (): Promise<WeatherData[]> => {
  */
 export const syncWeatherData = async (): Promise<boolean> => {
   try {
-    const response = await fetch(`http://72.61.215.233/api/weather/sync`, {
+    const response = await fetch(`${API_BASE_URL}/weather/sync`, {
       method: "POST",
     });
     if (!response.ok) {
@@ -138,7 +140,7 @@ export const syncWeatherData = async (): Promise<boolean> => {
  */
 export const checkBackendHealth = async (): Promise<boolean> => {
   try {
-    const response = await fetch(`http://72.61.215.233/api/health`, {
+    const response = await fetch(`${API_BASE_URL}/health`, {
       method: "GET",
     });
     return response.ok;

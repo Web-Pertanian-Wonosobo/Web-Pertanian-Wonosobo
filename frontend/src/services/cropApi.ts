@@ -1,6 +1,8 @@
 // Crop Recommendation API Service
 // Handles all backend API calls for crop recommendations based on weather predictions
 
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "http://localhost:8000").replace(/\/$/, "");
+
 export interface CropData {
   name: string;
   category: string;
@@ -73,7 +75,7 @@ export const fetchCropRecommendationsByCoordinates = async (
   days: number = 7
 ): Promise<CropRecommendationResponse> => {
   try {
-    let url = `http://72.61.215.233/api/crops/recommend/coordinates?lat=${lat}&lon=${lon}&days=${days}`;
+    let url = `${API_BASE_URL}/crops/recommend/coordinates?lat=${lat}&lon=${lon}&days=${days}`;
     if (locationName) {
       url += `&location_name=${encodeURIComponent(locationName)}`;
     }
@@ -103,7 +105,7 @@ export const fetchCropRecommendationsByLocation = async (
   days: number = 7
 ): Promise<CropRecommendationResponse> => {
   try {
-    const url = `http://72.61.215.233/api/crops/recommend?location=${encodeURIComponent(location)}&days=${days}`;
+    const url = `${API_BASE_URL}/crops/recommend?location=${encodeURIComponent(location)}&days=${days}`;
     
     console.log(`🌾 Fetching crop recommendations for location: ${location}`);
     
@@ -132,7 +134,7 @@ export const fetchCropsDatabase = async (): Promise<{
   crops: CropDatabaseItem[];
 }> => {
   try {
-    const response = await fetch('http://72.61.215.233/api/crops/database');
+    const response = await fetch(`${API_BASE_URL}/crops/database`);
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -156,7 +158,7 @@ export const fetchAvailableLocations = async (): Promise<{
   locations: LocationData[];
 }> => {
   try {
-    const response = await fetch('http://72.61.215.233/api/crops/locations');
+    const response = await fetch(`${API_BASE_URL}/crops/locations`);
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }

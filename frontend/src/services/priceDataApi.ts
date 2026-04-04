@@ -22,7 +22,8 @@ export interface PriceDataCreate {
   date: string;
 }
 
-const BACKEND_API = "http://72.61.215.233/api/market";
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "http://localhost:8000").replace(/\/$/, "");
+const BACKEND_API = `${API_BASE_URL}/market`;
 
 /**
  * Fetch all price data from local database

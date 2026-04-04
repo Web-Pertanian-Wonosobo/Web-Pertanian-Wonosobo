@@ -1,4 +1,6 @@
 import os
+from pathlib import Path
+
 from dotenv import load_dotenv
 import logging
 from sqlalchemy import create_engine
@@ -7,16 +9,18 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException
+from app.config import settings
 from app.routers import weather, market, auth, wilayah, forecast, crops, users
 import logging
 
-#load environment variables
-load_dotenv()
+# Load environment variables from backend/.env (works with uvicorn --reload subprocesses)
+BACKEND_DIR = Path(__file__).resolve().parents[1]
+load_dotenv(dotenv_path=BACKEND_DIR / ".env", override=True)
 
 # Database configuration
-DATABASE_URL = os.getenv("DATABASE_URL")
-OPENWEATHER_BASE_URL = os.getenv("OPENWEATHER_BASE_URL", "https://api.openweathermap.org/data/2.5").strip()
-OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY", "2f520b912f9b1f66af08fe302bf184f6").strip()
+DATABASE_URL = os.getenv("DATABASE_URL") or settings.DATABASE_URL
+OPENWEATHER_BASE_URL = (os.getenv("OPENWEATHER_BASE_URL") or settings.OPENWEATHER_BASE_URL or "").strip()
+OPENWEATHER_API_KEY = (os.getenv("OPENWEATHER_API_KEY") or settings.OPENWEATHER_API_KEY or "").strip()
 
 # Normalize OpenWeather base URL to avoid typos like aapi/appi/https::// etc
 if "openweathermap.org" not in OPENWEATHER_BASE_URL:

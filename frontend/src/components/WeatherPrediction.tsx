@@ -225,13 +225,14 @@ export function WeatherPrediction() {
   }
 
   // Error state - jika tidak ada data sama sekali
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "http://localhost:8000").replace(/\/$/, "");
   if (!currentWeather || currentWeather.length === 0) {
     return (
       <div className="p-6 max-w-7xl mx-auto">
         <h1 className="text-3xl font-bold mb-2">Prediksi Cuaca</h1>
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
           <p className="text-yellow-800">
-            ⚠️ Tidak ada data cuaca tersedia. Pastikan backend server berjalan di http://72.61.215.233/api
+            ⚠️ Tidak ada data cuaca tersedia. Pastikan backend server berjalan di {API_BASE_URL}
           </p>
           <button 
             onClick={() => window.location.reload()} 

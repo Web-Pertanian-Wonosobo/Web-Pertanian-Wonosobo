@@ -18,7 +18,8 @@ export interface WilayahApiResponse {
 }
 
 // Gunakan backend proxy untuk menghindari CORS
-const BACKEND_API_URL = "http://72.61.215.233/api/wilayah/list";
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "http://localhost:8000").replace(/\/$/, "");
+const BACKEND_API_URL = `${API_BASE_URL}/wilayah/list`;
 
 /**
  * Mengambil semua data wilayah kecamatan di Wonosobo

@@ -2,7 +2,7 @@
  * Users API Service - User management endpoints
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://72.61.215.233/api';
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').replace(/\/$/, '');
 
 export interface User {
   user_id: number;

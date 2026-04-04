@@ -44,6 +44,8 @@ import {
 } from "recharts";
 import { fetchAllKomoditas, type Komoditas } from "../services/komoditasApi";
 
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "http://localhost:8000").replace(/\/$/, "");
+
 interface AdminDashboardProps {
   onNavigate: (page: string) => void;
 }
@@ -78,9 +80,7 @@ export function AdminDashboard({
         setKomoditasData(komoditas);
 
         // Fetch weather data
-        const weatherResponse = await fetch(
-          "http://72.61.215.233/api/weather/current"
-        );
+        const weatherResponse = await fetch(`${API_BASE_URL}/weather/current`);
         if (weatherResponse.ok) {
           const weatherJson = await weatherResponse.json();
           setWeatherData(weatherJson.data || []);
