@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -6,6 +6,8 @@ import { Label } from "./ui/label";
 import { Badge } from "./ui/badge";
 import { Alert, AlertDescription } from "./ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 import {
   MapPin,
   Upload,
@@ -24,7 +26,6 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import {
-  calculateSlope,
   getSlopeRecommendations,
 } from "../services/elevationApi";
 
@@ -95,47 +96,119 @@ export function SlopeAnalysis() {
 
   const [selectedLocation, setSelectedLocation] = useState<any>(null);
   const [formData, setFormData] = useState({
-    district: '',
-    village: '',
+    district: 'all',
   });
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
-  const mapData = [
-    {
-      id: 1,
-      name: "Desa Kejajar",
-      coordinates: "-7.2346, 109.8973",
-      slope: 30,
-      risk: "high",
-      color: "bg-red-500",
-      suggestions: [
-        "Hindari aktivitas berat",
-        "Pasang jaring pengaman",
-        "Monitoring ketat",
-      ],
-      lastUpdate: "3 jam lalu",
-    },
-    {
-      id: 2,
-      name: "Desa Sembungan",
-      coordinates: "-7.2510, 109.9189",
-      slope: 22,
-      risk: "medium",
-      color: "bg-yellow-500",
-      suggestions: ["Tanam tanaman penutup tanah", "Buat saluran drainase"],
-      lastUpdate: "1 jam lalu",
-    },
-    {
-      id: 3,
-      name: "Desa Garung",
-      coordinates: "-7.3113, 109.9168",
-      slope: 18,
-      risk: "low",
-      color: "bg-green-500",
-      suggestions: ["Kondisi aman untuk pertanian", "Tetap jaga drainase"],
-      lastUpdate: "45 menit lalu",
-    },
-  ];
+  const mapContainerRef = useRef<HTMLDivElement | null>(null);
+  const mapRef = useRef<L.Map | null>(null);
+  const geoJsonLayerRef = useRef<L.GeoJSON | null>(null);
+  const selectedFeatureLayerRef = useRef<L.Path | null>(null);
+  const selectedPointMarkerRef = useRef<L.Marker | null>(null);
+
+  const [geoJsonStatus, setGeoJsonStatus] = useState<{
+    loading: boolean;
+    error: string | null;
+  }>({ loading: true, error: null });
+
+  // Memoize API_BASE_URL to avoid recalculation on every render
+  const API_BASE_URL = useMemo(
+    () => (import.meta.env.VITE_API_BASE_URL || "http://localhost:8000").replace(/\/$/, ""),
+    []
+  );
+  // Memoize GEOJSON_URL to prevent infinite useEffect loops
+  const GEOJSON_URL = useMemo(() => `${API_BASE_URL}/static/Lereng_Wonosobo.geojson`, [API_BASE_URL]);
+
+  const getNumeric = (value: unknown): number | null => {
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+    if (typeof value === "string") {
+      const cleaned = value.replace(/[^0-9.,-]/g, "").replace(/,/g, ".");
+      const parsed = Number.parseFloat(cleaned);
+      if (Number.isFinite(parsed)) return parsed;
+    }
+    return null;
+  };
+
+  const extractSlopeFromProperties = (properties: Record<string, unknown> | null | undefined): number | null => {
+    if (!properties) return null;
+
+    const preferredKeys = [
+      "slope",
+      "Slope",
+      "SLOPE",
+      "lereng",
+      "Lereng",
+      "LERENG",
+      "kemiringan",
+      "Kemiringan",
+      "KEMIRINGAN",
+      "slope_pct",
+      "slope_percent",
+      "slope_percentage",
+      "nilai",
+      "NILAI",
+      "value",
+      "VALUE",
+    ];
+
+    for (const key of preferredKeys) {
+      if (Object.prototype.hasOwnProperty.call(properties, key)) {
+        const num = getNumeric(properties[key]);
+        if (num !== null) return num;
+      }
+    }
+
+    // Fallback: cari nilai numerik pertama yang masuk akal (0-100)
+    for (const value of Object.values(properties)) {
+      const num = getNumeric(value);
+      if (num !== null && num >= 0 && num <= 100) return num;
+    }
+
+    return null;
+  };
+
+  const extractNameFromProperties = (properties: Record<string, unknown> | null | undefined): string | null => {
+    if (!properties) return null;
+
+    const preferredKeys = [
+      "name",
+      "Name",
+      "NAME",
+      "NAMOBJ",
+      "nama",
+      "Nama",
+      "NAMA",
+      "desa",
+      "Desa",
+      "DESA",
+      "kecamatan",
+      "Kecamatan",
+      "KECAMATAN",
+      "WADMKC",
+      "WADMKD",
+    ];
+
+    for (const key of preferredKeys) {
+      if (Object.prototype.hasOwnProperty.call(properties, key)) {
+        const value = properties[key];
+        if (typeof value === "string" && value.trim()) return value.trim();
+      }
+    }
+
+    return null;
+  };
+
+  const riskFromSlope = (slopePercentage: number): "low" | "medium" | "high" => {
+    if (slopePercentage <= 20) return "low";
+    if (slopePercentage <= 30) return "medium";
+    return "high";
+  };
+
+  const getRiskColorVar = (risk: "low" | "medium" | "high") => {
+    if (risk === "high") return "var(--destructive)";
+    if (risk === "medium") return "var(--chart-5)";
+    return "var(--chart-4)";
+  };
 
   const riskHistory = [
     {
@@ -188,6 +261,143 @@ export function SlopeAnalysis() {
         return null;
     }
   };
+
+  // Initialize Leaflet map once
+  useEffect(() => {
+    if (!mapContainerRef.current) return;
+    if (mapRef.current) return;
+
+    const center: L.LatLngExpression = [-7.3617, 109.9075]; // Wonosobo
+
+    const map = L.map(mapContainerRef.current, {
+      zoomControl: true,
+      attributionControl: true,
+    }).setView(center, 10);
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: "&copy; OpenStreetMap contributors",
+    }).addTo(map);
+
+    mapRef.current = map;
+
+    return () => {
+      if (selectedPointMarkerRef.current) {
+        selectedPointMarkerRef.current.remove();
+        selectedPointMarkerRef.current = null;
+      }
+      map.remove();
+      mapRef.current = null;
+      geoJsonLayerRef.current = null;
+      selectedFeatureLayerRef.current = null;
+    };
+  }, []);
+
+  // Load GeoJSON slope layer
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    let cancelled = false;
+
+    const load = async () => {
+      setGeoJsonStatus({ loading: true, error: null });
+
+      try {
+        // Build GeoJSON URL
+        const geoJsonUrl = `${API_BASE_URL}/static/Lereng_Wonosobo.geojson`;
+        const response = await fetch(geoJsonUrl, { cache: "no-store" });
+        if (!response.ok) {
+          throw new Error(
+            `Gagal memuat GeoJSON (${response.status}). Pastikan backend aktif dan file tersedia di endpoint static.`
+          );
+        }
+
+        const data = await response.json();
+        if (cancelled) return;
+
+        if (geoJsonLayerRef.current) {
+          geoJsonLayerRef.current.remove();
+          geoJsonLayerRef.current = null;
+        }
+
+        const layer = L.geoJSON(data, {
+          style: (feature) => {
+            const slope = extractSlopeFromProperties((feature as any)?.properties);
+            if (slope === null) {
+              return {
+                color: "var(--border)",
+                weight: 1,
+                fillColor: "var(--muted)",
+                fillOpacity: 0.25,
+              };
+            }
+
+            const risk = riskFromSlope(slope);
+            const color = getRiskColorVar(risk);
+            return {
+              color,
+              weight: 1,
+              fillColor: color,
+              fillOpacity: 0.35,
+            };
+          },
+          onEachFeature: (feature, featureLayer) => {
+            featureLayer.on("click", async (evt: any) => {
+              const clickedLayer = evt.target as L.Path;
+              if (geoJsonLayerRef.current && selectedFeatureLayerRef.current) {
+                geoJsonLayerRef.current.resetStyle(selectedFeatureLayerRef.current);
+              }
+              selectedFeatureLayerRef.current = clickedLayer;
+              clickedLayer.setStyle({ weight: 3 });
+
+              const props = (feature as any)?.properties as Record<string, unknown> | undefined;
+              const name = extractNameFromProperties(props);
+
+              // Analisis selalu berbasis koordinat titik yang diklik, bukan seluruh area/polygon.
+              const latlng = evt?.latlng as L.LatLng | undefined;
+              if (!latlng) {
+                toast.error("Koordinat titik klik tidak terbaca.");
+                return;
+              }
+
+              const map = mapRef.current;
+              if (map) {
+                if (!selectedPointMarkerRef.current) {
+                  selectedPointMarkerRef.current = L.marker(latlng).addTo(map);
+                } else {
+                  selectedPointMarkerRef.current.setLatLng(latlng);
+                }
+              }
+
+              const locationName = name ? `${name}` : "Lokasi yang dipilih";
+              await handleMapClick(latlng.lat, latlng.lng, feature, locationName);
+            });
+          },
+        });
+
+        layer.addTo(map);
+        geoJsonLayerRef.current = layer;
+
+        const layerBounds = layer.getBounds();
+        if (layerBounds.isValid()) {
+          map.fitBounds(layerBounds.pad(0.05));
+        }
+
+        setGeoJsonStatus({ loading: false, error: null });
+      } catch (error: any) {
+        console.error("Failed to load slope GeoJSON:", error);
+        if (cancelled) return;
+        setGeoJsonStatus({ loading: false, error: error?.message || "Gagal memuat GeoJSON" });
+      }
+    };
+
+    load();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [API_BASE_URL]);
 
   const getRiskLabel = (risk: string) => {
     switch (risk) {
@@ -336,122 +546,87 @@ ${new Date().toLocaleString("id-ID")}`;
   /**
    * Analisis slope berdasarkan koordinat yang diklik di Google Maps
    */
-  const handleMapClick = async (lat: number, lng: number, locationName?: string) => {
+  const handleMapClick = async (lat: number, lng: number, feature?: any, locationName?: string) => {
     setIsAnalyzing(true);
 
     try {
-      toast.info("Menganalisis kemiringan tanah...");
-
-      // Hitung slope menggunakan Google Elevation API (dengan fallback ke mock data)
-      const slopeResult = await calculateSlope(lat, lng, 100);
-
-      // Tentukan metode analisis berdasarkan sumber data aktual
-      let analysisMethod = "Real Elevation Data";
-      if (slopeResult.elevationData && slopeResult.elevationData.length > 0) {
-        // Check if we got real elevation data or mock
-        const firstElevation = slopeResult.elevationData[0].elevation;
-        // Mock data usually has specific patterns, real data is more varied
-        if (firstElevation > 0 && firstElevation !== Math.floor(firstElevation)) {
-          analysisMethod = "Google/Open Elevation API";
-        } else {
-          analysisMethod = "Mock Data (API Fallback)";
-        }
+      // Baca slope dari GeoJSON properties
+      const slope = extractSlopeFromProperties(feature?.properties);
+      const featureName = extractNameFromProperties(feature?.properties);
+      
+      if (slope === null) {
+        toast.error("Data kemiringan tidak ditemukan di lokasi ini.");
+        setIsAnalyzing(false);
+        return;
       }
 
-      // Buat objek lokasi baru
+      // Hitung degree dari percentage
+      const slopeDegrees = Math.atan(slope / 100) * (180 / Math.PI);
+      const riskLevel = riskFromSlope(slope);
+
+      // Buat objek lokasi dengan data dari GeoJSON
       const newLocation = {
         id: Date.now(),
-        name: locationName || `${formData.village || 'Lokasi'}, ${formData.district || 'Wonosobo'}`,
+        name: locationName || featureName || "Lokasi yang dipilih",
         coordinates: `${lat.toFixed(4)}, ${lng.toFixed(4)}`,
-        slope: slopeResult.slopePercentage,
-        slopeDegrees: slopeResult.slopeDegrees,
-        risk: slopeResult.riskLevel,
+        slope: Math.round(slope * 10) / 10,
+        slopeDegrees: Math.round(slopeDegrees * 10) / 10,
+        risk: riskLevel,
         color:
-          slopeResult.riskLevel === "high"
+          riskLevel === "high"
             ? "bg-red-500"
-            : slopeResult.riskLevel === "medium"
+            : riskLevel === "medium"
             ? "bg-yellow-500"
             : "bg-green-500",
-        suggestions: getSlopeRecommendations(slopeResult.slopePercentage),
+        suggestions: getSlopeRecommendations(slope),
         lastUpdate: "Baru saja",
-        analysisMethod: analysisMethod,
-        elevationData: slopeResult.elevationData,
+        analysisMethod: "Model DEM GeoJSON",
+        elevationData: [],
       };
 
       setSelectedLocation(newLocation);
 
       toast.success(
-        `Analisis selesai! Kemiringan: ${
-          slopeResult.slopePercentage
-        }% (Risiko: ${getRiskLabel(slopeResult.riskLevel)})`
+        `Analisis selesai! Kemiringan: ${Math.round(slope * 10) / 10}% (Risiko: ${getRiskLabel(riskLevel)})`
       );
     } catch (error) {
       console.error("Error analyzing slope:", error);
-      toast.error(
-        "Terjadi error saat analisis. Sistem akan menggunakan data simulasi sebagai fallback."
-      );
-      
-      // Fallback: buat hasil simulasi
-      const mockSlopePercentage = 15 + (Math.random() * 20); // 15-35%
-      const mockSlopeDegrees = Math.atan(mockSlopePercentage / 100) * (180 / Math.PI);
-      const mockRiskLevel = mockSlopePercentage <= 20 ? 'low' : mockSlopePercentage <= 30 ? 'medium' : 'high';
-      
-      const newLocation = {
-        id: Date.now(),
-        name: locationName || `${formData.village || 'Lokasi'}, ${formData.district || 'Wonosobo'}`,
-        coordinates: `${lat.toFixed(4)}, ${lng.toFixed(4)}`,
-        slope: Math.round(mockSlopePercentage * 10) / 10,
-        slopeDegrees: Math.round(mockSlopeDegrees * 10) / 10,
-        risk: mockRiskLevel,
-        color: mockRiskLevel === "high" ? "bg-red-500" : mockRiskLevel === "medium" ? "bg-yellow-500" : "bg-green-500",
-        suggestions: getSlopeRecommendations(mockSlopePercentage),
-        lastUpdate: "Baru saja",
-        analysisMethod: "Mock Data (Fallback)",
-        elevationData: []
-      };
-
-      setSelectedLocation(newLocation);
-      toast.success(`Analisis selesai (mode simulasi)! Kemiringan: ${Math.round(mockSlopePercentage * 10) / 10}% (Risiko: ${getRiskLabel(mockRiskLevel)})`);
+      toast.error("Terjadi error saat membaca data dari model DEM.");
     } finally {
       setIsAnalyzing(false);
     }
   };
 
   /**
-   * Analisis slope untuk lokasi dari form input
+   * Handle district selection - zoom to district area on map
    */
-  const handleAnalyzeLocation = async () => {
-    console.log("handleAnalyzeLocation called");
-    console.log("Form data:", formData);
-
-    if (!formData.district) {
-      toast.error("Pilih kecamatan terlebih dahulu");
-      return;
-    }
-
-    if (!formData.village) {
-      toast.error("Pilih desa terlebih dahulu");
-      return;
-    }
-
-    // Dapatkan koordinat dari data kecamatan
-    const districtData = wonosoboData[formData.district as keyof typeof wonosoboData];
-    if (!districtData) {
-      toast.error("Data kecamatan tidak ditemukan");
-      return;
-    }
-
-    // Tambahkan sedikit variasi koordinat untuk desa yang berbeda
-    const villageIndex = districtData.villages.indexOf(formData.village);
-    const baseCoords = districtData.coordinates;
-    const lat = baseCoords.lat + (villageIndex * 0.01) + (Math.random() * 0.005);
-    const lng = baseCoords.lng + (villageIndex * 0.01) + (Math.random() * 0.005);
-
-    console.log("Using coordinates:", lat, lng, "for", formData.district, formData.village);
+  const handleDistrictChange = (district: string) => {
+    setFormData({ district });
     
-    // Update form data untuk nama lokasi
-    const locationName = `${formData.village}, ${formData.district}`;
-    await handleMapClick(lat, lng, locationName);
+    // Zoom to district area if exists
+    const map = mapRef.current;
+    if (!map) return;
+
+    if (district === "all") {
+      const layer = geoJsonLayerRef.current;
+      if (layer) {
+        const bounds = layer.getBounds();
+        if (bounds.isValid()) {
+          map.fitBounds(bounds.pad(0.05));
+          toast.info("Menampilkan semua area");
+          return;
+        }
+      }
+      map.setView([-7.3617, 109.9075], 10);
+      toast.info("Menampilkan semua area");
+      return;
+    }
+
+    if (district && wonosoboData[district as keyof typeof wonosoboData]) {
+      const coords = wonosoboData[district as keyof typeof wonosoboData].coordinates;
+      map.setView([coords.lat, coords.lng], 12);
+      toast.info(`Menampilkan area ${district}`);
+    }
   };
 
   return (
@@ -476,21 +651,20 @@ ${new Date().toLocaleString("id-ID")}`;
       )}
 
       {/* Info API Sources */}
-      <Alert className="mb-6 border-blue-200 bg-blue-50">
+      {/* <Alert className="mb-6 border-blue-200 bg-blue-50">
         <MapPinned className="h-4 w-4 text-blue-600" />
         <AlertDescription className="text-blue-800">
           <strong>Sumber Data Elevasi:</strong> Sistem akan mencoba Google Elevation API (jika tersedia), 
           kemudian Open Elevation API (gratis), dan mock data sebagai fallback terakhir.
         </AlertDescription>
-      </Alert>
+      </Alert> */}
 
       {/* Analysis Loading */}
       {isAnalyzing && (
         <Alert className="mb-6 border-blue-200 bg-blue-50">
           <Loader2 className="h-4 w-4 text-blue-600 animate-spin" />
           <AlertDescription className="text-blue-800">
-            Sedang menganalisis kemiringan tanah menggunakan Google Elevation
-            API...
+            Sedang menganalisis kemiringan tanah dari Model DEM...
           </AlertDescription>
         </Alert>
       )}
@@ -508,50 +682,22 @@ ${new Date().toLocaleString("id-ID")}`;
             <CardContent>
               {/* Simulated Map Interface */}
               <div className="bg-slate-100 h-96 rounded-lg relative overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-br from-green-00 to-blue-200">
-                  <div className="aspect-w-16 aspect-h-9">
-                    <iframe
-                      src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d15833.585526017232!2d109.88243403261622!3d-7.351225576101918!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2e7aa2f82c40b8a3%3A0x6e9a6e1476d0590a!2sWonosobo%2C%20Wonosobo%20Regency%2C%20Central%20Java!5e0!3m2!1sen!2sid!4v1714574577823!5m2!1sen!2sid"
-                      width="100%"
-                      height="400"
-                      style={{ border: 0 }}
-                      allowFullScreen
-                      loading="lazy"
-                      referrerPolicy="no-referrer-when-downgrade"
-                      title="Peta Wonosobo"
-                    />
-                  </div>
-                  {/* Legend */}
-                  <div className="absolute top-4 right-4 bg-white p-3 rounded-lg shadow-md">
-                    <h4 className="font-medium mb-2 text-sm">Tingkat Risiko</h4>
-                    <div className="space-y-1">
-                      <div className="flex items-center text-xs">
-                        <div className="w-3 h-3 bg-green-500 rounded mr-2"></div>
-                        <span>Rendah (0-20%)</span>
-                      </div>
-                      <div className="flex items-center text-xs">
-                        <div className="w-3 h-3 bg-yellow-500 rounded mr-2"></div>
-                        <span>Sedang (21-30%)</span>
-                      </div>
-                      <div className="flex items-center text-xs">
-                        <div className="w-3 h-3 bg-red-500 rounded mr-2"></div>
-                        <span>Tinggi (&gt;30%)</span>
-                      </div>
-                    </div>
-                  </div>
+                <div className="absolute inset-0">
+                  <div ref={mapContainerRef} className="h-96 w-full" />
 
-                  {/* Map Points */}
-                  {mapData.map((point) => (
-                    <div
-                      key={point.id}
-                      className={`absolute w-4 h-4 ${point.color} rounded-full cursor-pointer shadow-lg transform hover:scale-110 transition-transform`}
-                      style={{
-                        left: `${20 + point.id * 25}%`,
-                        top: `${30 + point.id * 15}%`,
-                      }}
-                      onClick={() => setSelectedLocation(point)}
-                    />
-                  ))}
+                  {/* GeoJSON status */}
+                  {(geoJsonStatus.loading || geoJsonStatus.error) && (
+                    <div className="absolute bottom-4 left-4 bg-white/90 p-3 rounded-lg shadow-md max-w-md">
+                      {geoJsonStatus.loading ? (
+                        <p className="text-xs text-muted-foreground">Memuat layer GeoJSON lereng...</p>
+                      ) : (
+                        <p className="text-xs text-red-600">{geoJsonStatus.error}</p>
+                      )}
+                      <p className="text-[11px] text-muted-foreground mt-1">
+                        Sumber: {GEOJSON_URL}
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -561,6 +707,10 @@ ${new Date().toLocaleString("id-ID")}`;
                   <div className="flex justify-between items-start mb-3">
                     <div>
                       <h4 className="font-medium">{selectedLocation.name}</h4>
+                      <p className="text-xs text-gray-600 flex items-center mt-1">
+                        <MapPin className="h-3 w-3 mr-1" />
+                        Lokasi: {selectedLocation.coordinates}
+                      </p>
                       {selectedLocation.analysisMethod && (
                         <p className="text-xs text-blue-600 flex items-center mt-1">
                           <MapPinned className="h-3 w-3 mr-1" />
@@ -577,18 +727,13 @@ ${new Date().toLocaleString("id-ID")}`;
 
                   <div className="grid grid-cols-2 gap-4 text-sm mb-3">
                     <div>
-                      <span className="text-muted-foreground">Koordinat:</span>
-                      <p>{selectedLocation.coordinates}</p>
+                      <span className="text-muted-foreground">Kemiringan (%):</span>
+                      <p className="text-lg font-semibold">{selectedLocation.slope}%</p>
                     </div>
                     <div>
-                      <span className="text-muted-foreground">Kemiringan:</span>
-                      <p>
-                        {selectedLocation.slope}%
-                        {selectedLocation.slopeDegrees && (
-                          <span className="text-xs text-muted-foreground ml-1">
-                            ({selectedLocation.slopeDegrees} deg)
-                          </span>
-                        )}
+                      <span className="text-muted-foreground">Kemiringan (°):</span>
+                      <p className="text-lg font-semibold">
+                        {selectedLocation.slopeDegrees || 0}°
                       </p>
                     </div>
                   </div>
@@ -682,15 +827,16 @@ ${new Date().toLocaleString("id-ID")}`;
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <Label htmlFor="district">Kecamatan</Label>
+                <Label htmlFor="district">Filter Kecamatan (Opsional)</Label>
                 <Select 
                   value={formData.district} 
-                  onValueChange={(value) => setFormData({ ...formData, district: value, village: '' })}
+                  onValueChange={handleDistrictChange}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Pilih Kecamatan" />
+                    <SelectValue placeholder="Semua Kecamatan" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="all">Semua Kecamatan</SelectItem>
                     {Object.keys(wonosoboData).map((district) => (
                       <SelectItem key={district} value={district}>
                         {district}
@@ -699,51 +845,12 @@ ${new Date().toLocaleString("id-ID")}`;
                   </SelectContent>
                 </Select>
               </div>
-              <div>
-                <Label htmlFor="village">Desa</Label>
-                <Select 
-                  value={formData.village} 
-                  onValueChange={(value) => setFormData({ ...formData, village: value })}
-                  disabled={!formData.district}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={formData.district ? "Pilih Desa" : "Pilih Kecamatan dulu"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {formData.district && wonosoboData[formData.district as keyof typeof wonosoboData]?.villages.map((village) => (
-                      <SelectItem key={village} value={village}>
-                        {village}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button
-                className="w-full"
-                onClick={handleAnalyzeLocation}
-                disabled={isAnalyzing || !formData.district || !formData.village}
-              >
-                {isAnalyzing ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Menganalisis...
-                  </>
-                ) : (
-                  <>
-                    <TrendingUp className="h-4 w-4 mr-2" />
-                    Analisis Slope Otomatis
-                  </>
-                )}
-              </Button>
               <p className="text-xs text-muted-foreground text-center">
-                Menggunakan Google Elevation API untuk {formData.district && formData.village ? `${formData.village}, ${formData.district}` : 'area yang dipilih'}
+                Klik pada area di peta untuk menganalisis kemiringan tanah
               </p>
-              <div className="border-t pt-3">
-                <Button variant="outline" className="w-full">
-                  <MapPin className="h-4 w-4 mr-2" />
-                  Tambah Titik Monitoring Manual
-                </Button>
-              </div>
+              <p className="text-xs text-blue-600 bg-blue-50 p-2 rounded text-center">
+                Data analisis dibaca langsung dari Model DEM
+              </p>
             </CardContent>
           </Card>
 
@@ -780,7 +887,7 @@ ${new Date().toLocaleString("id-ID")}`;
           </Card>
 
           {/* Upload Section */}
-          <Card>
+          {/* <Card>
             <CardHeader>
               <CardTitle>Upload Data</CardTitle>
             </CardHeader>
@@ -795,7 +902,7 @@ ${new Date().toLocaleString("id-ID")}`;
               </Button>
               <Button className="w-full">Ambil Data Baru</Button>
             </CardContent>
-          </Card>
+          </Card> */}
 
           {/* Quick Actions */}
           <Card>

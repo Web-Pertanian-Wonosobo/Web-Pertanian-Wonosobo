@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 import logging
 from sqlalchemy import create_engine
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -84,6 +85,13 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Serve static assets (e.g., GeoJSON DEM layer) from backend
+STATIC_DIR = Path(__file__).resolve().parent / "static"
+if STATIC_DIR.exists():
+    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+else:
+    logging.warning(f"⚠️ Static directory not found: {STATIC_DIR}")
 
 # Include routers
 app.include_router(weather.router)  # Router already has /weather prefix
