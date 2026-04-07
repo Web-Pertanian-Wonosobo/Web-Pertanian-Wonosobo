@@ -30,66 +30,67 @@ import {
 } from "../services/elevationApi";
 
 export function SlopeAnalysis() {
-  // Data Kecamatan dan Desa di Wonosobo
+  // Data Kecamatan - Koordinat diambil dari distribusi akurat GeoJSON
+  // Grid 5x3 = 15 kecamatan, distribusi berdasarkan lat/lng range GeoJSON
   const wonosoboData = {
     'Wonosobo': {
-      coordinates: { lat: -7.3617, lng: 109.9075 },
+      coordinates: { lat: -7.3614, lng: 109.9042 },
       villages: ['Wonosobo Utara', 'Wonosobo Timur', 'Jajar', 'Pucangan', 'Kulur']
     },
     'Kejajar': {
-      coordinates: { lat: -7.2500, lng: 109.8000 },
+      coordinates: { lat: -7.2487, lng: 109.9543 },
       villages: ['Kejajar', 'Tambi', 'Sembungan', 'Patak Banteng', 'Dieng Kulon', 'Dieng Wetan']
     },
     'Garung': {
-      coordinates: { lat: -7.3333, lng: 109.8333 },
+      coordinates: { lat: -7.2960, lng: 109.9200 },
       villages: ['Garung', 'Giriroto', 'Kaligesing', 'Tieng', 'Gumelem Wetan']
     },
     'Kertek': {
-      coordinates: { lat: -7.3000, lng: 109.8500 },
+      coordinates: { lat: -7.3904, lng: 109.9636 },
       villages: ['Kertek', 'Sudimoro', 'Gondosuli', 'Tanjungsari', 'Kebonsari']
     },
     'Sapuran': {
-      coordinates: { lat: -7.4000, lng: 109.9000 },
+      coordinates: { lat: -7.4622, lng: 109.9780 },
       villages: ['Sapuran', 'Candirejo', 'Pagergunung', 'Kalibeber', 'Jetis']
     },
     'Kalikajar': {
-      coordinates: { lat: -7.2667, lng: 109.9333 },
+      coordinates: { lat: -7.4156, lng: 109.9712 },
       villages: ['Kalikajar', 'Tlogo', 'Buntu', 'Ngadirenggo', 'Sigedang']
     },
     'Kaliwiro': {
-      coordinates: { lat: -7.4500, lng: 109.8500 },
+      coordinates: { lat: -7.4608, lng: 109.8568 },
       villages: ['Kaliwiro', 'Pringapus', 'Leksono', 'Candimulyo', 'Wonosari']
     },
     'Leksono': {
-      coordinates: { lat: -7.4333, lng: 109.8000 },
+      coordinates: { lat: -7.4190, lng: 109.8561},
       villages: ['Leksono', 'Kaliharjo', 'Gunungsari', 'Ngadireso', 'Wonolelo']
     },
     'Sukoharjo': {
-      coordinates: { lat: -7.4667, lng: 109.9333 },
+      coordinates: { lat: -7.4045, lng: 109.7859 },
       villages: ['Sukoharjo', 'Candiroto', 'Gondang', 'Mudal', 'Semampir']
     },
     'Kalibawang': {
-      coordinates: { lat: -7.3833, lng: 109.7667 },
+      coordinates: { lat: -7.5020, lng: 109.9279 },
       villages: ['Kalibawang', 'Clapar', 'Selomerto', 'Banjarnegara', 'Kepakisan']
     },
     'Mojotengah': {
-      coordinates: { lat: -7.4167, lng: 109.7833 },
+      coordinates: { lat: -7.3318, lng: 109.8987 },
       villages: ['Mojotengah', 'Gumelem', 'Blumbang', 'Windusari', 'Bener']
     },
     'Watumalang': {
-      coordinates: { lat: -7.3167, lng: 109.7500 },
+      coordinates: { lat: -7.3291, lng: 109.8568 },
       villages: ['Watumalang', 'Candimulyo', 'Sigrogol', 'Mlandi', 'Bringin']
     },
     'Wadaslintang': {
-      coordinates: { lat: -7.4000, lng: 109.7000 },
+      coordinates: { lat: -7.5514, lng: 109.8098 },
       villages: ['Wadaslintang', 'Karangduwur', 'Sidorejo', 'Karangjati', 'Mlandi']
     },
     'Kepil': {
-      coordinates: { lat: -7.3500, lng: 109.7000 },
+      coordinates: { lat: -7.5211, lng: 110.0045 },
       villages: ['Kepil', 'Kepilkroya', 'Wonokerto', 'Kepil Kidul', 'Kepil Wetan']
     },
     'Selomerto': {
-      coordinates: { lat: -7.5000, lng: 109.8000 },
+      coordinates: { lat: -7.4145, lng: 109.8839 },
       villages: ['Selomerto', 'Kalitekuk', 'Selopuro', 'Banjarsari', 'Purworeja']
     }
   };
@@ -97,8 +98,10 @@ export function SlopeAnalysis() {
   const [selectedLocation, setSelectedLocation] = useState<any>(null);
   const [formData, setFormData] = useState({
     district: 'all',
+    village: '',
   });
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [showDEMLayer, setShowDEMLayer] = useState(false);
 
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -267,7 +270,8 @@ export function SlopeAnalysis() {
     if (!mapContainerRef.current) return;
     if (mapRef.current) return;
 
-    const center: L.LatLngExpression = [-7.3617, 109.9075]; // Wonosobo
+    // Use GeoJSON centroid as center point
+    const center: L.LatLngExpression = [-7.4208, 109.8989]; // Wonosobo GeoJSON centroid
 
     const map = L.map(mapContainerRef.current, {
       zoomControl: true,
@@ -292,6 +296,48 @@ export function SlopeAnalysis() {
       selectedFeatureLayerRef.current = null;
     };
   }, []);
+
+  // Update GeoJSON layer styling when showDEMLayer state changes
+  useEffect(() => {
+    const layer = geoJsonLayerRef.current;
+    if (!layer) return;
+
+    // Re-style each feature based on showDEMLayer state
+    layer.eachLayer((featureLayer: any) => {
+      if (!featureLayer.feature) return;
+      
+      const feature = featureLayer.feature;
+      const slope = extractSlopeFromProperties(feature?.properties);
+      
+      // Jika DEM layer belum ditampilkan, buat transparan
+      if (!showDEMLayer) {
+        featureLayer.setStyle({
+          color: "transparent",
+          weight: 0,
+          fillColor: "transparent",
+          fillOpacity: 0,
+        });
+      } else {
+        if (slope === null) {
+          featureLayer.setStyle({
+            color: "var(--border)",
+            weight: 1,
+            fillColor: "var(--muted)",
+            fillOpacity: 0.25,
+          });
+        } else {
+          const risk = riskFromSlope(slope);
+          const color = getRiskColorVar(risk);
+          featureLayer.setStyle({
+            color,
+            weight: 1,
+            fillColor: color,
+            fillOpacity: 0.35,
+          });
+        }
+      }
+    });
+  }, [showDEMLayer]);
 
   // Load GeoJSON slope layer
   useEffect(() => {
@@ -324,6 +370,17 @@ export function SlopeAnalysis() {
         const layer = L.geoJSON(data, {
           style: (feature) => {
             const slope = extractSlopeFromProperties((feature as any)?.properties);
+            
+            // Jika DEM layer belum ditampilkan, buat transparan
+            if (!showDEMLayer) {
+              return {
+                color: "transparent",
+                weight: 0,
+                fillColor: "transparent",
+                fillOpacity: 0,
+              };
+            }
+            
             if (slope === null) {
               return {
                 color: "var(--border)",
@@ -350,6 +407,9 @@ export function SlopeAnalysis() {
               }
               selectedFeatureLayerRef.current = clickedLayer;
               clickedLayer.setStyle({ weight: 3 });
+
+              // Set showDEMLayer to true agar layer terlihat
+              setShowDEMLayer(true);
 
               const props = (feature as any)?.properties as Record<string, unknown> | undefined;
               const name = extractNameFromProperties(props);
@@ -544,15 +604,81 @@ ${new Date().toLocaleString("id-ID")}`;
   };
 
   /**
-   * Analisis slope berdasarkan koordinat yang diklik di Google Maps
+   * Cari feature di GeoJSON layer yang paling dekat dengan koordinat yang diberikan
+   */
+  const getFeatureAtCoordinates = (lat: number, lng: number): any => {
+    const layer = geoJsonLayerRef.current;
+    if (!layer) return null;
+
+    let foundFeature = null;
+    let minDistance = Infinity;
+
+    // Helper untuk hitung simple distance
+    const simpleDistance = (lat1: number, lng1: number, lat2: number, lng2: number) => {
+      return Math.sqrt((lat1 - lat2) ** 2 + (lng1 - lng2) ** 2);
+    };
+
+    layer.eachLayer((featureLayer: any) => {
+      if (!featureLayer.feature) return;
+      
+      try {
+        const feature = featureLayer.feature as any;
+        if (feature.geometry?.type === 'Point') {
+          const coords = feature.geometry.coordinates;
+          const distance = simpleDistance(lat, lng, coords[1], coords[0]);
+          
+          if (distance < minDistance) {
+            minDistance = distance;
+            foundFeature = feature;
+          }
+        } else if (feature.geometry?.type === 'Polygon' || feature.geometry?.type === 'MultiPolygon') {
+          // Untuk polygon, gunakan centroid atau first ring center
+          const coords = feature.geometry.type === 'Polygon' 
+            ? feature.geometry.coordinates[0] 
+            : feature.geometry.coordinates[0][0];
+          
+          if (coords && Array.isArray(coords) && coords.length > 0) {
+            // Hitung centroid sederhana
+            let centerLng = 0, centerLat = 0;
+            for (const [coordLng, coordLat] of coords) {
+              centerLng += coordLng;
+              centerLat += coordLat;
+            }
+            centerLng /= coords.length;
+            centerLat /= coords.length;
+            
+            const distance = simpleDistance(lat, lng, centerLat, centerLng);
+            
+            if (distance < minDistance) {
+              minDistance = distance;
+              foundFeature = feature;
+            }
+          }
+        }
+      } catch (e) {
+        // Skip jika error
+      }
+    });
+
+    return foundFeature;
+  };
+
+  /**
+   * Analisis slope berdasarkan koordinat yang diklik di peta
    */
   const handleMapClick = async (lat: number, lng: number, feature?: any, locationName?: string) => {
     setIsAnalyzing(true);
 
     try {
+      // Jika feature tidak diberikan, cari dari layer berdasarkan koordinat
+      let actualFeature = feature;
+      if (!actualFeature) {
+        actualFeature = getFeatureAtCoordinates(lat, lng);
+      }
+
       // Baca slope dari GeoJSON properties
-      const slope = extractSlopeFromProperties(feature?.properties);
-      const featureName = extractNameFromProperties(feature?.properties);
+      const slope = extractSlopeFromProperties(actualFeature?.properties);
+      const featureName = extractNameFromProperties(actualFeature?.properties);
       
       if (slope === null) {
         toast.error("Data kemiringan tidak ditemukan di lokasi ini.");
@@ -598,10 +724,10 @@ ${new Date().toLocaleString("id-ID")}`;
   };
 
   /**
-   * Handle district selection - zoom to district area on map
+   * Handle district selection - zoom to district area on map and trigger analysis
    */
-  const handleDistrictChange = (district: string) => {
-    setFormData({ district });
+  const handleDistrictChange = async (district: string) => {
+    setFormData({ district, village: '' });
     
     // Zoom to district area if exists
     const map = mapRef.current;
@@ -617,15 +743,38 @@ ${new Date().toLocaleString("id-ID")}`;
           return;
         }
       }
-      map.setView([-7.3617, 109.9075], 10);
+      map.setView([-7.4208, 109.8989], 10);
       toast.info("Menampilkan semua area");
+      
+      // Clear selection
+      setSelectedLocation(null);
+      setShowDEMLayer(false);
+      if (selectedPointMarkerRef.current) {
+        selectedPointMarkerRef.current.remove();
+        selectedPointMarkerRef.current = null;
+      }
       return;
     }
 
     if (district && wonosoboData[district as keyof typeof wonosoboData]) {
-      const coords = wonosoboData[district as keyof typeof wonosoboData].coordinates;
-      map.setView([coords.lat, coords.lng], 12);
-      toast.info(`Menampilkan area ${district}`);
+      const districtData = wonosoboData[district as keyof typeof wonosoboData];
+      const { lat, lng } = districtData.coordinates;
+      
+      // Set DEM layer to visible
+      setShowDEMLayer(true);
+      
+      // Pan to district
+      map.setView([lat, lng], 12);
+      
+      // Show marker on map
+      if (!selectedPointMarkerRef.current) {
+        selectedPointMarkerRef.current = L.marker([lat, lng]).addTo(map);
+      } else {
+        selectedPointMarkerRef.current.setLatLng([lat, lng]);
+      }
+
+      // Trigger analysis otomatis
+      await handleMapClick(lat, lng, null, district);
     }
   };
 
@@ -718,9 +867,26 @@ ${new Date().toLocaleString("id-ID")}`;
                         </p>
                       )}
                     </div>
-                    <div className="flex space-x-2">
+                    <div className="flex flex-col space-y-2">
                       <Button size="sm" onClick={generateReport}>
                         Download Laporan
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => {
+                          setSelectedLocation(null);
+                          setShowDEMLayer(false);
+                          if (selectedFeatureLayerRef.current && geoJsonLayerRef.current) {
+                            geoJsonLayerRef.current.resetStyle(selectedFeatureLayerRef.current);
+                          }
+                          if (selectedPointMarkerRef.current) {
+                            selectedPointMarkerRef.current.remove();
+                            selectedPointMarkerRef.current = null;
+                          }
+                        }}
+                      >
+                        Bersihkan
                       </Button>
                     </div>
                   </div>
@@ -827,13 +993,13 @@ ${new Date().toLocaleString("id-ID")}`;
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <Label htmlFor="district">Filter Kecamatan (Opsional)</Label>
+                <Label htmlFor="district">Pilih Kecamatan</Label>
                 <Select 
                   value={formData.district} 
                   onValueChange={handleDistrictChange}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Semua Kecamatan" />
+                    <SelectValue placeholder="Pilih Kecamatan" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Semua Kecamatan</SelectItem>
@@ -844,13 +1010,25 @@ ${new Date().toLocaleString("id-ID")}`;
                     ))}
                   </SelectContent>
                 </Select>
+                <p className="text-xs text-blue-600 bg-blue-50 p-2 rounded mt-2 text-center">
+                  Pilih kecamatan untuk analisis otomatis
+                </p>
               </div>
-              <p className="text-xs text-muted-foreground text-center">
-                Klik pada area di peta untuk menganalisis kemiringan tanah
-              </p>
-              <p className="text-xs text-blue-600 bg-blue-50 p-2 rounded text-center">
-                Data analisis dibaca langsung dari Model DEM
-              </p>
+
+              {!formData.district || formData.district === "all" ? (
+                <>
+                  <p className="text-xs text-muted-foreground text-center">
+                    atau klik langsung pada area di peta untuk analisis kemiringan tanah
+                  </p>
+                  <p className="text-xs text-orange-600 bg-orange-50 p-2 rounded text-center">
+                    ⚠️ CATATAN: Klik di peta untuk mendapatkan koordinat yang akurat dari GeoJSON
+                  </p>
+                </>
+              ) : (
+                <p className="text-xs text-gray-600 bg-gray-50 p-2 rounded text-center">
+                  Analisis berjalan berdasarkan data area pilihan
+                </p>
+              )}
             </CardContent>
           </Card>
 
@@ -905,7 +1083,7 @@ ${new Date().toLocaleString("id-ID")}`;
           </Card> */}
 
           {/* Quick Actions */}
-          <Card>
+          {/* <Card>
             <CardHeader>
               <CardTitle className="flex items-center">
                 <History className="h-4 w-4 mr-2" />
@@ -934,7 +1112,7 @@ ${new Date().toLocaleString("id-ID")}`;
                 ))}
               </div>
             </CardContent>
-          </Card>
+          </Card> */}
         </div>
       </div>
     </div>
