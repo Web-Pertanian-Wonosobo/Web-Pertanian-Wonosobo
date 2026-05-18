@@ -27,22 +27,26 @@ const BACKEND_API_URL = `${API_BASE_URL}/wilayah/list`;
  */
 export async function fetchWilayah(): Promise<Wilayah[]> {
   try {
-    const response = await fetch(BACKEND_API_URL);
+    // Tambahkan timestamp untuk menghindari cache browser
+    const cacheBuster = `?t=${Date.now()}`;
+    const response = await fetch(`${BACKEND_API_URL}${cacheBuster}`);
     
     if (!response.ok) {
+      console.warn(`⚠️ API Wilayah returned ${response.status}, check backend logs.`);
       throw new Error(`HTTP error! status: ${response.status}`);
     }
     
     const result: WilayahApiResponse = await response.json();
+    console.log("📍 Wilayah Data Received:", result);
     
     if (result.success && Array.isArray(result.data)) {
       return result.data;
     }
     
-    throw new Error("Format response tidak sesuai");
+    return []; // Return empty array instead of throwing to avoid crash
   } catch (error) {
-    console.error("Error fetching wilayah data:", error);
-    throw error;
+    console.error("❌ Error fetching wilayah data:", error);
+    return [];
   }
 }
 

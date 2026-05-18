@@ -12,6 +12,7 @@ class MarketPrice(Base):
     price = Column(Float)
     market_location = Column(String(100))
     date = Column(Date)
+    planting_date = Column(Date, nullable=True)
     created_at = Column(TIMESTAMP)
 
     user = relationship("User", back_populates="market_prices")

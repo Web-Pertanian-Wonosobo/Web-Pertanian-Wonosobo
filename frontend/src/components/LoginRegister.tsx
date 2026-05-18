@@ -141,7 +141,7 @@ export function LoginRegister({ onLogin }: LoginRegisterProps) {
             <span className="text-2xl"></span>
           </div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            EcoScope Banyumas
+            EcoScope Wonosobo
           </h1>
           <p className="text-gray-600">
             Platform monitoring lingkungan dan pasar pertanian
@@ -269,7 +269,7 @@ export function LoginRegister({ onLogin }: LoginRegisterProps) {
 
         {/* Footer */}
         <p className="text-center text-sm text-gray-500 mt-6">
-          © 2025 EcoScope Banyumas. Semua hak dilindungi.
+          © 2025 EcoScope Wonosobo. Semua hak dilindungi.
         </p>
       </div>
     </div>

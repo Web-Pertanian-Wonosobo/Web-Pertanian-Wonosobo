@@ -16,6 +16,7 @@ import {
   MapPin,
   Home,
   DollarSign,
+  Database,
 } from "lucide-react";
 
 interface AdminNavigationProps {
@@ -28,12 +29,7 @@ export function AdminNavigation({ onLogout }: AdminNavigationProps) {
   const navigate = useNavigate();
   const menuItems = [
     { id: "admin-dashboard", label: "Dashboard Admin", icon: LayoutDashboard, path: "/admin/dashboard" },
-    {
-      id: "kelola-harga",
-      label: "Kelola Data Harga",
-      icon: DollarSign,
-      path: "/admin/kelola-harga"
-    },
+    { id: "kelola-harga", label: "Kelola Data Harga", icon: DollarSign, path: "/admin/kelola-harga" },
     { id: "kelola-pengguna", label: "Kelola User", icon: Users, path: "/admin/kelola-pengguna" },
   ];
 

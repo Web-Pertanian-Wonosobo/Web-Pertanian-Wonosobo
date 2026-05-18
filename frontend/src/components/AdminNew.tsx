@@ -53,9 +53,9 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
   };
 
   const recentAlerts = [
-    { id: 1, type: 'slope', location: 'Desa Kedungbanteng', severity: 'high', time: '2 jam lalu' },
-    { id: 2, type: 'weather', location: 'Kec. Sumbang', severity: 'medium', time: '4 jam lalu' },
-    { id: 3, type: 'price', location: 'Pasar Wage', severity: 'low', time: '6 jam lalu' }
+    { id: 1, type: 'slope', location: 'Desa Sembungan', severity: 'high', time: '2 jam lalu' },
+    { id: 2, type: 'weather', location: 'Kec. Kejajar', severity: 'medium', time: '4 jam lalu' },
+    { id: 3, type: 'price', location: 'Pasar Wonosobo', severity: 'low', time: '6 jam lalu' }
   ];
 
   const users = [
@@ -64,7 +64,7 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
       name: 'Budi Santoso', 
       email: 'budi@gmail.com', 
       role: 'farmer', 
-      location: 'Sumbang', 
+      location: 'Kejajar', 
       status: 'active',
       joinDate: '15 Jan 2025',
       lastLogin: '26 Jul 2025'
@@ -74,7 +74,7 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
       name: 'Siti Aminah', 
       email: 'siti@gmail.com', 
       role: 'farmer', 
-      location: 'Kedungbanteng', 
+      location: 'Sembungan', 
       status: 'active',
       joinDate: '20 Jan 2025',
       lastLogin: '25 Jul 2025'
@@ -84,7 +84,7 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
       name: 'Ahmad Solichin', 
       email: 'ahmad@gmail.com', 
       role: 'admin', 
-      location: 'Purwokerto', 
+      location: 'Wonosobo', 
       status: 'active',
       joinDate: '01 Jan 2025',
       lastLogin: '26 Jul 2025'
@@ -94,7 +94,7 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
       name: 'Rina Dewi', 
       email: 'rina@gmail.com', 
       role: 'farmer', 
-      location: 'Kembaran', 
+      location: 'Kertek', 
       status: 'inactive',
       joinDate: '10 Feb 2025',
       lastLogin: '20 Jul 2025'
@@ -107,7 +107,7 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
       commodity: 'Padi', 
       currentPrice: 6200, 
       trend: 'up', 
-      region: 'Banyumas', 
+      region: 'Wonosobo', 
       supply: 'Normal',
       lastUpdate: '26 Jul 2025'
     },
@@ -116,7 +116,7 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
       commodity: 'Cabai Merah', 
       currentPrice: 35000, 
       trend: 'down', 
-      region: 'Banyumas', 
+      region: 'Wonosobo', 
       supply: 'Tinggi',
       lastUpdate: '26 Jul 2025'
     },
@@ -125,7 +125,7 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
       commodity: 'Bawang Merah', 
       currentPrice: 28500, 
       trend: 'up', 
-      region: 'Banyumas', 
+      region: 'Wonosobo', 
       supply: 'Rendah',
       lastUpdate: '26 Jul 2025'
     },
@@ -134,7 +134,7 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
       commodity: 'Jagung', 
       currentPrice: 4800, 
       trend: 'stable', 
-      region: 'Banyumas', 
+      region: 'Wonosobo', 
       supply: 'Normal',
       lastUpdate: '25 Jul 2025'
     }
@@ -253,7 +253,7 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
     <div className="p-6 max-w-7xl mx-auto">
       <div className="mb-6">
         <h1 className="text-3xl font-bold mb-2">Dashboard Administrator</h1>
-        <p className="text-muted-foreground">Kelola sistem EcoScope Banyumas</p>
+        <p className="text-muted-foreground">Kelola sistem EcoScope Wonosobo</p>
       </div>
 
       {/* Stats Overview */}
@@ -404,15 +404,15 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
               {/* Users Table */}
               <div className="border rounded-lg">
                 <Table>
-                  <TableHeader>
+                  <TableHeader className="bg-slate-50/80">
                     <TableRow>
-                      <TableHead>Nama</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Role</TableHead>
-                      <TableHead>Lokasi</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Bergabung</TableHead>
-                      <TableHead>Aksi</TableHead>
+                      <TableHead className="font-bold text-gray-900">Nama</TableHead>
+                      <TableHead className="font-bold text-gray-900">Email</TableHead>
+                      <TableHead className="font-bold text-gray-900">Role</TableHead>
+                      <TableHead className="font-bold text-gray-900">Lokasi</TableHead>
+                      <TableHead className="font-bold text-gray-900">Status</TableHead>
+                      <TableHead className="font-bold text-gray-900">Bergabung</TableHead>
+                      <TableHead className="font-bold text-gray-900">Aksi</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -487,15 +487,15 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
               {/* Data Table */}
               <div className="border rounded-lg">
                 <Table>
-                  <TableHeader>
+                  <TableHeader className="bg-slate-50/80">
                     <TableRow>
-                      <TableHead>Komoditas</TableHead>
-                      <TableHead>Harga Saat Ini</TableHead>
-                      <TableHead>Tren</TableHead>
-                      <TableHead>Daerah</TableHead>
-                      <TableHead>Supply</TableHead>
-                      <TableHead>Update Terakhir</TableHead>
-                      <TableHead>Aksi</TableHead>
+                      <TableHead className="font-bold text-gray-900">Komoditas</TableHead>
+                      <TableHead className="font-bold text-gray-900">Harga Saat Ini</TableHead>
+                      <TableHead className="font-bold text-gray-900">Tren</TableHead>
+                      <TableHead className="font-bold text-gray-900">Daerah</TableHead>
+                      <TableHead className="font-bold text-gray-900">Supply</TableHead>
+                      <TableHead className="font-bold text-gray-900">Update Terakhir</TableHead>
+                      <TableHead className="font-bold text-gray-900">Aksi</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -701,7 +701,7 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                     </div>
                     <ul className="text-xs text-blue-800 space-y-1">
                       <li>• Tingkatkan frekuensi monitoring di area berisiko tinggi</li>
-                      <li>• Koordinasi dengan BPBD untuk area Kertek dan Dieng Kulon</li>
+                      <li>• Koordinasi dengan BPBD untuk area Kertek dan Dieng Wetan</li>
                       <li>• Evaluasi sistem peringatan dini setiap minggu</li>
                     </ul>
                   </div>

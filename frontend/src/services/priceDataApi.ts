@@ -10,6 +10,9 @@ export interface PriceData {
   unit: string;
   price: number;
   date: string;
+  planting_date?: string;
+  user_id?: number;
+  source?: string;
   created_at?: string;
 }
 
@@ -20,6 +23,7 @@ export interface PriceDataCreate {
   unit: string;
   price: number;
   date: string;
+  planting_date?: string;
 }
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "http://localhost:8000").replace(/\/$/, "");

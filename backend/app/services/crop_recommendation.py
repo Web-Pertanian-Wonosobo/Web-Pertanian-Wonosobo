@@ -146,6 +146,20 @@ CROPS_DATABASE = {
         "economic_value": "sedang",
         "difficulty": "sedang",
         "description": "Sayuran sejuk, pasar tradisional dan modern, tahan simpan"
+    },
+    "kacang_panjang": {
+        "name": "Kacang Panjang",
+        "category": "Sayuran",
+        "temp_optimal": (20, 30),
+        "temp_tolerance": (15, 35),
+        "rainfall_optimal": (100, 200),
+        "rainfall_tolerance": (80, 250),
+        "growth_period": 60,
+        "season_preference": ["peralihan", "musim_kemarau"],
+        "humidity_optimal": (60, 80),
+        "economic_value": "sedang",
+        "difficulty": "mudah",
+        "description": "Sayuran polong yang cepat panen dan permintaan pasar stabil"
     }
 }
 

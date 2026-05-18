@@ -1,4 +1,4 @@
-﻿import requests
+import requests
 from sqlalchemy.orm import Session
 from datetime import datetime, date
 from typing import List, Dict, Optional
@@ -172,7 +172,13 @@ def fetch_and_save_market_data():
             ).first()
 
             if existing:
-                # Update harga jika sudah ada
+                # JANGAN UPDATE jika data ini diinput oleh admin (punya user_id)
+                # Kita prioritaskan data manual dari Dinas Pertanian
+                if existing.user_id is not None:
+                    logger.info(f"  [MARKET] Skipped sync for {price_data['commodity_name']} because manual entry exists.")
+                    continue
+                    
+                # Update harga jika sudah ada dan itu data dari API (user_id is None)
                 existing.price = price_data["price"]
                 existing.unit = price_data["unit"]
                 continue

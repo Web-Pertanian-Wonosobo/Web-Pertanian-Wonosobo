@@ -1,59 +1,47 @@
-"""
-Script untuk membuat semua tables di database PostgreSQL
-Jalankan script ini jika tables belum ada atau perlu di-recreate
-"""
+import sys
+import os
+from pathlib import Path
+
+# Add the project root to sys.path
+sys.path.append(str(Path(__file__).resolve().parent))
 
 from app.db import engine, Base
-from app.models import user_model, market_model, weather_model, gis_model, log_model, notification_model
+from app.models import (
+    user_model, 
+    market_model, 
+    commodity_model, 
+    gis_model, 
+    weather_model, 
+    notification_model, 
+    log_model
+)
 
-def create_all_tables():
-    """Create all tables defined in models"""
+def create_tables():
+    print("Creating all tables in the database...")
     try:
-        print("🔧 Creating all database tables...")
-        
-        # Import all models to ensure they're registered with Base
-        print("📚 Importing all models...")
-        
-        # Create all tables
         Base.metadata.create_all(bind=engine)
+        print("Successfully created all tables!")
         
-        print("✅ All tables created successfully!")
-        print("\nTables created:")
-        print("📋 users")
-        print("📋 market_prices") 
-        print("📋 weather_data")
-        print("📋 weather_predictions")
-        print("📋 gis_layers")
-        print("📋 log_activity")
-        print("📋 notifications")
+        # Seed initial commodities
+        from sqlalchemy.orm import Session
+        from app.models.commodity_model import Commodity
         
-        return True
-        
+        with Session(engine) as session:
+            if session.query(Commodity).count() == 0:
+                print("Seeding initial commodities...")
+                initial_commodities = [
+                    'Kentang', 'Wortel', 'Kubis', 'Kopi', 'Strawberry', 'Bawang Daun',
+                    'Jagung', 'Tembakau', 'Carica', 'Padi', 'Tomat', 'Lettuce'
+                ]
+                for name in initial_commodities:
+                    session.add(Commodity(name=name, category="Umum"))
+                session.commit()
+                print(f"Successfully seeded {len(initial_commodities)} commodities!")
+            else:
+                print("Commodities table already contains data, skipping seed.")
+                
     except Exception as e:
-        print(f"❌ Error creating tables: {e}")
-        return False
-
-def drop_all_tables():
-    """Drop all tables (use with caution!)"""
-    try:
-        print("⚠️ Dropping all database tables...")
-        Base.metadata.drop_all(bind=engine)
-        print("✅ All tables dropped successfully!")
-        return True
-    except Exception as e:
-        print(f"❌ Error dropping tables: {e}")
-        return False
+        print(f"Error during initialization: {e}")
 
 if __name__ == "__main__":
-    import sys
-    
-    if len(sys.argv) > 1 and sys.argv[1] == "--drop":
-        print("⚠️ WARNING: This will delete all data!")
-        confirm = input("Type 'yes' to continue: ")
-        if confirm.lower() == 'yes':
-            drop_all_tables()
-            create_all_tables()
-        else:
-            print("❌ Operation cancelled")
-    else:
-        create_all_tables()
+    create_tables()

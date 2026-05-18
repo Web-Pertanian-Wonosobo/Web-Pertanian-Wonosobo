@@ -14,7 +14,7 @@ router = APIRouter(prefix="/forecast", tags=["Price Forecasting"])
 @router.get("/commodity/{commodity_name}")
 def forecast_commodity_price(
     commodity_name: str,
-    days_forward: int = Query(30, ge=1, le=90, description="Jumlah hari prediksi (1-90)"),
+    days_forward: int = Query(30, ge=1, le=180, description="Jumlah hari prediksi (1-180)"),
     days_back: int = Query(90, ge=30, le=365, description="Jumlah hari data historis (30-365)"),
     use_synthetic: bool = Query(True, description="Gunakan data sintetis jika data tidak cukup"),
     db: Session = Depends(get_db)
@@ -152,10 +152,10 @@ def quick_price_prediction(
                 detail="Target date cannot be in the past"
             )
         
-        if days_diff > 90:
+        if days_diff > 180:
             raise HTTPException(
                 status_code=400,
-                detail="Target date too far in the future (max 90 days)"
+                detail="Target date too far in the future (max 180 days)"
             )
         
         forecaster = PriceForecaster(db)

@@ -33,13 +33,13 @@ export function EditProfile({ onBack }: EditProfileProps) {
     name: "Hamka",
     email: "hamka@gmail.com",
     phone: "081234567890",
-    address: "Jl. Raya Sumbang No. 123",
-    village: "Sumbang",
-    district: "Sumbang",
+    address: "Jl. Raya Wonosobo No. 123",
+    village: "Kertek",
+    district: "Kertek",
     farmSize: "2.5",
     farmType: "padi",
     experience: "15",
-    bio: "Petani padi dengan pengalaman 15 tahun di Desa Sumbang. Aktif dalam kelompok tani dan menggunakan teknologi modern untuk meningkatkan hasil panen.",
+    bio: "Petani padi dengan pengalaman 15 tahun di Desa Kertek. Aktif dalam kelompok tani dan menggunakan teknologi modern untuk meningkatkan hasil panen.",
   });
 
   const [isLoading, setIsLoading] = useState(false);
@@ -206,13 +206,11 @@ export function EditProfile({ onBack }: EditProfileProps) {
                       <SelectValue placeholder="Pilih Desa" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="sumbang">Sumbang</SelectItem>
-                      <SelectItem value="kedungbanteng">
-                        Kedungbanteng
-                      </SelectItem>
-                      <SelectItem value="kembaran">Kembaran</SelectItem>
-                      <SelectItem value="banyumas">Banyumas</SelectItem>
-                      <SelectItem value="cilongok">Cilongok</SelectItem>
+                      <SelectItem value="wonosobo">Wonosobo</SelectItem>
+                      <SelectItem value="kertek">Kertek</SelectItem>
+                      <SelectItem value="kejajar">Kejajar</SelectItem>
+                      <SelectItem value="sapuran">Sapuran</SelectItem>
+                      <SelectItem value="garung">Garung</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -228,13 +226,11 @@ export function EditProfile({ onBack }: EditProfileProps) {
                       <SelectValue placeholder="Pilih Kecamatan" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="sumbang">Sumbang</SelectItem>
-                      <SelectItem value="kedungbanteng">
-                        Kedungbanteng
-                      </SelectItem>
-                      <SelectItem value="kembaran">Kembaran</SelectItem>
-                      <SelectItem value="banyumas">Banyumas</SelectItem>
-                      <SelectItem value="cilongok">Cilongok</SelectItem>
+                      <SelectItem value="wonosobo">Wonosobo</SelectItem>
+                      <SelectItem value="kertek">Kertek</SelectItem>
+                      <SelectItem value="kejajar">Kejajar</SelectItem>
+                      <SelectItem value="sapuran">Sapuran</SelectItem>
+                      <SelectItem value="garung">Garung</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

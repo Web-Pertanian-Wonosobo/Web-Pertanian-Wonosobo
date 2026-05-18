@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
@@ -43,8 +43,19 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { fetchAllKomoditas, type Komoditas } from "../services/komoditasApi";
+import { AnalyticsPage } from "./AnalyticsPage";
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "http://localhost:8000").replace(/\/$/, "");
+
+const logActivity = async (activity: string) => {
+  try {
+    await fetch(`${API_BASE_URL}/market/log?activity=${encodeURIComponent(activity)}`, {
+      method: 'POST'
+    });
+  } catch (error) {
+    console.error("Failed to log activity:", error);
+  }
+};
 
 interface AdminDashboardProps {
   onNavigate: (page: string) => void;
@@ -59,6 +70,8 @@ export function AdminDashboard({
   const [komoditasData, setKomoditasData] = useState<Komoditas[]>([]);
   const [weatherData, setWeatherData] = useState<any[]>([]);
   const [_loading, setLoading] = useState(true);
+  const [filterMonth, setFilterMonth] = useState("all");
+  const [filterYear, setFilterYear] = useState(new Date().getFullYear().toString());
 
   // Debug: Log setiap kali komoditasData berubah
   useEffect(() => {
@@ -68,6 +81,8 @@ export function AdminDashboard({
     );
     console.log(" [AdminDashboard] Length:", komoditasData.length);
   }, [komoditasData]);
+
+  const hasLogged = useRef(false);
 
   // Fetch data from backend
   useEffect(() => {
@@ -93,6 +108,14 @@ export function AdminDashboard({
     };
 
     fetchData();
+    
+    // Log akses dashboard HANYA SEKALI per sesi browser
+    const sessionKey = "logged_dashboard_session_" + new Date().toISOString().split('T')[0];
+    if (!sessionStorage.getItem(sessionKey)) {
+      logActivity("Sesi Dashboard Utama");
+      sessionStorage.setItem(sessionKey, "true");
+    }
+    
     // Refresh every 5 minutes
     const interval = setInterval(fetchData, 5 * 60 * 1000);
     return () => clearInterval(interval);
@@ -102,21 +125,21 @@ export function AdminDashboard({
     {
       id: 1,
       type: "slope",
-      location: "Desa Kedungbanteng",
+      location: "Desa Sembungan",
       severity: "high",
       time: "2 jam lalu",
     },
     {
       id: 2,
       type: "weather",
-      location: "Kec. Sumbang",
+      location: "Kec. Kejajar",
       severity: "medium",
       time: "4 jam lalu",
     },
     {
       id: 3,
       type: "price",
-      location: "Pasar Wage",
+      location: "Pasar Wonosobo",
       severity: "low",
       time: "6 jam lalu",
     },
@@ -157,6 +180,7 @@ export function AdminDashboard({
     lastUpdate: item.tanggal
       ? new Date(item.tanggal).toLocaleDateString("id-ID")
       : "-",
+    source: (item as any).source || "Otomatis"
   }));
 
   const monthlyDataChart = [
@@ -230,11 +254,23 @@ export function AdminDashboard({
     return matchesSearch && matchesRole;
   });
 
-  const filteredData = agriculturalData.filter(
-    (data) =>
+  const filteredData = agriculturalData.filter((data) => {
+    const matchesSearch = 
       data.commodity.toLowerCase().includes(searchData.toLowerCase()) ||
-      data.region.toLowerCase().includes(searchData.toLowerCase())
-  );
+      data.region.toLowerCase().includes(searchData.toLowerCase());
+    
+    // Parse date for filtering (Format DD/MM/YYYY)
+    const dateParts = data.lastUpdate.split('/');
+    if (dateParts.length < 3) return matchesSearch;
+    
+    const month = dateParts[1]; // MM
+    const year = dateParts[2];  // YYYY
+    
+    const matchesMonth = filterMonth === "all" || month.padStart(2, '0') === filterMonth;
+    const matchesYear = filterYear === "all" || year === filterYear;
+    
+    return matchesSearch && matchesMonth && matchesYear;
+  });
 
   const getRoleColor = (role: string) => {
     switch (role) {
@@ -284,11 +320,33 @@ export function AdminDashboard({
     }
   };
 
+  const handleExport = () => {
+    logActivity("Download CSV Rekapitulasi");
+    if (agriculturalData.length === 0) return;
+    const headers = ['Komoditas', 'Harga', 'Tren', 'Daerah', 'Supply', 'Update Terakhir', 'Sumber'];
+    const csvRows = agriculturalData.map(d => [
+      d.commodity,
+      d.currentPrice,
+      d.trend,
+      d.region,
+      d.supply,
+      d.lastUpdate,
+      d.source
+    ]);
+    const csvContent = [headers.join(','), ...csvRows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `rekap_pertanian_wonosobo_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+  };
+
   return (
     <div className="p-6 max-w-8xl mx-auto">
       <div className="mb-6">
         <h1 className="text-3xl font-bold mb-2">Dashboard Administrator</h1>
-        <p className="text-muted-foreground">Kelola sistem EcoScope Banyumas</p>
+        <p className="text-muted-foreground">Kelola sistem EcoScope Wonosobo</p>
       </div>
 
       {/* Stats Overview */}
@@ -418,7 +476,9 @@ export function AdminDashboard({
       </Card>
 
       {/* Management Tabs */}
-      <Tabs defaultValue="users" className="space-y-6">
+      <Tabs defaultValue="users" className="space-y-6" onValueChange={(value) => {
+        if (value === "analytics") logActivity("Lihat Analytics");
+      }}>
         <TabsList>
           <TabsTrigger value="users">Kelola Pengguna</TabsTrigger>
           <TabsTrigger value="data">Data Pertanian</TabsTrigger>
@@ -465,15 +525,15 @@ export function AdminDashboard({
               {/* Users Table */}
               <div className="border rounded-lg">
                 <Table>
-                  <TableHeader>
+                  <TableHeader className="bg-slate-50/80">
                     <TableRow>
-                      <TableHead>Nama</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Role</TableHead>
-                      <TableHead>Lokasi</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Bergabung</TableHead>
-                      <TableHead>Aksi</TableHead>
+                      <TableHead className="font-bold text-gray-900">Nama</TableHead>
+                      <TableHead className="font-bold text-gray-900">Email</TableHead>
+                      <TableHead className="font-bold text-gray-900">Role</TableHead>
+                      <TableHead className="font-bold text-gray-900">Lokasi</TableHead>
+                      <TableHead className="font-bold text-gray-900">Status</TableHead>
+                      <TableHead className="font-bold text-gray-900">Bergabung</TableHead>
+                      <TableHead className="font-bold text-gray-900">Aksi</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -518,13 +578,13 @@ export function AdminDashboard({
           <Card>
             <CardHeader>
               <div className="flex justify-between items-center">
-                <CardTitle>Data Pertanian</CardTitle>
+                <CardTitle>Rekapitulasi Data Pertanian</CardTitle>
                 <div className="flex space-x-2">
-                  <Button variant="outline">
+                  <Button variant="outline" onClick={handleExport}>
                     <Download className="h-4 w-4 mr-2" />
-                    Export
+                    Export Excel (CSV)
                   </Button>
-                  <Button>
+                  <Button onClick={() => _onNavigate('price-management')}>
                     <Plus className="h-4 w-4 mr-2" />
                     Tambah Data
                   </Button>
@@ -532,33 +592,68 @@ export function AdminDashboard({
               </div>
             </CardHeader>
             <CardContent>
-              {/* Search */}
-              <div className="flex space-x-4 mb-4">
-                <div className="flex-1">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Cari komoditas atau daerah..."
-                      value={searchData}
-                      onChange={(e) => setSearchData(e.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
+              {/* Search and Period Filter */}
+              <div className="flex flex-col md:flex-row gap-4 mb-6">
+                <div className="flex-1 relative">
+                  <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Cari komoditas atau daerah..."
+                    value={searchData}
+                    onChange={(e) => setSearchData(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                
+                <div className="flex gap-2">
+                  <Select value={filterMonth} onValueChange={setFilterMonth}>
+                    <SelectTrigger className="w-[140px]">
+                      <SelectValue placeholder="Semua Bulan" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Semua Bulan</SelectItem>
+                      <SelectItem value="01">Januari</SelectItem>
+                      <SelectItem value="02">Februari</SelectItem>
+                      <SelectItem value="03">Maret</SelectItem>
+                      <SelectItem value="04">April</SelectItem>
+                      <SelectItem value="05">Mei</SelectItem>
+                      <SelectItem value="06">Juni</SelectItem>
+                      <SelectItem value="07">Juli</SelectItem>
+                      <SelectItem value="08">Agustus</SelectItem>
+                      <SelectItem value="09">September</SelectItem>
+                      <SelectItem value="10">Oktober</SelectItem>
+                      <SelectItem value="11">November</SelectItem>
+                      <SelectItem value="12">Desember</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  <Select value={filterYear} onValueChange={setFilterYear}>
+                    <SelectTrigger className="w-[120px]">
+                      <SelectValue placeholder="Tahun" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Semua Tahun</SelectItem>
+                      <SelectItem value="2024">2024</SelectItem>
+                      <SelectItem value="2025">2025</SelectItem>
+                      <SelectItem value="2026">2026</SelectItem>
+                      <SelectItem value="2027">2027</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
               {/* Data Table */}
               <div className="border rounded-lg">
                 <Table>
-                  <TableHeader>
+                  <TableHeader className="bg-slate-50/80">
                     <TableRow>
-                      <TableHead>Komoditas</TableHead>
-                      <TableHead>Harga Saat Ini</TableHead>
-                      <TableHead>Tren</TableHead>
-                      <TableHead>Daerah</TableHead>
-                      <TableHead>Supply</TableHead>
-                      <TableHead>Update Terakhir</TableHead>
-                      <TableHead>Aksi</TableHead>
+                      <TableHead className="font-bold text-gray-900">Komoditas</TableHead>
+                      <TableHead className="font-bold text-gray-900">Harga Saat Ini</TableHead>
+                      <TableHead className="font-bold text-gray-900">Tren</TableHead>
+                      <TableHead className="font-bold text-gray-900">Daerah</TableHead>
+                      <TableHead className="font-bold text-gray-900">Supply</TableHead>
+                      <TableHead className="font-bold text-gray-900">Update Terakhir</TableHead>
+                      <TableHead className="font-bold text-gray-900">Sumber</TableHead>
+                      <TableHead className="font-bold text-gray-900">Aksi</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -602,6 +697,14 @@ export function AdminDashboard({
                         </TableCell>
                         <TableCell>{data.lastUpdate}</TableCell>
                         <TableCell>
+                          <Badge
+                            variant={data.source === "Manual" ? "outline" : "secondary"}
+                            className={data.source === "Manual" ? "border-blue-500 text-blue-700 bg-blue-50" : "bg-gray-100 text-gray-600"}
+                          >
+                            {data.source}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
                           <div className="flex space-x-2">
                             <Button size="sm" variant="outline">
                               <Edit className="h-3 w-3" />
@@ -621,46 +724,7 @@ export function AdminDashboard({
         </TabsContent>
 
         <TabsContent value="analytics">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Pertumbuhan Pengguna</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={monthlyDataChart}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" />
-                    <YAxis />
-                    <Tooltip />
-                    <Bar dataKey="users" fill="#3b82f6" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Distribusi Alert</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={monthlyDataChart}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" />
-                    <YAxis />
-                    <Tooltip />
-                    <Line
-                      type="monotone"
-                      dataKey="alerts"
-                      stroke="#f59e0b"
-                      strokeWidth={2}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          </div>
+          <AnalyticsPage onNavigate={_onNavigate} />
         </TabsContent>
       </Tabs>
     </div>

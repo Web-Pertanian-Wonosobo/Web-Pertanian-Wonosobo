@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Card,
   CardContent,
@@ -49,6 +49,12 @@ import {
 
 // === Interface untuk data OpenWeather ===
 interface ParsedWeatherData {
+  current?: {
+    temperature: number;
+    weather: string;
+    rainfall: number;
+    humidity: number;
+  };
   forecasts: {
     date: string;
     temperature: number;
@@ -68,6 +74,13 @@ const fetchWeatherDirect = async (location: string): Promise<ParsedWeatherData> 
       return { forecasts: [] };
     }
     
+    const current = openWeatherData.current ? {
+      temperature: openWeatherData.current.main.temp,
+      weather: getWeatherDescription(openWeatherData.current.weather[0]?.main || 'Clear'),
+      rainfall: openWeatherData.current.rain?.['1h'] || 0,
+      humidity: openWeatherData.current.main.humidity,
+    } : undefined;
+
     // Transform OpenWeather data to our interface
     const forecasts = openWeatherData.forecasts.map(forecast => ({
       date: new Date(forecast.dt * 1000).toISOString(),
@@ -76,7 +89,7 @@ const fetchWeatherDirect = async (location: string): Promise<ParsedWeatherData> 
       rainfall: forecast.rain?.['3h'] || 0,
     }));
     
-    return { forecasts };
+    return { current, forecasts };
   } catch (error) {
     console.error('Error fetching OpenWeather data:', error);
     return { forecasts: [] };
@@ -126,6 +139,18 @@ const getStandardLocationName = (locationName: string): string => {
   return mapping[normalized] || 'Wonosobo';
 };
 
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "http://localhost:8000").replace(/\/$/, "");
+
+const logActivity = async (activity: string) => {
+  try {
+    await fetch(`${API_BASE_URL}/market/log?activity=${encodeURIComponent(activity)}`, {
+      method: 'POST'
+    });
+  } catch (error) {
+    console.error("Failed to log activity:", error);
+  }
+};
+
 export function WeatherPrediction() {
   console.log('🚀 WeatherPrediction component rendering...');
   
@@ -139,11 +164,18 @@ export function WeatherPrediction() {
   const [cropLoading, setCropLoading] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
+  const hasLogged = useRef(false);
+
   // === Ambil data dari backend (/weather/current) ===
   useEffect(() => {
     const loadWeather = async () => {
       setIsLoading(true);
       try {
+        const sessionKey = "logged_weather_session_" + new Date().toISOString().split('T')[0];
+        if (!sessionStorage.getItem(sessionKey)) {
+          logActivity("Cek Cuaca Wonosobo");
+          sessionStorage.setItem(sessionKey, "true");
+        }
         console.log('🌤️ Memuat data cuaca dari backend...');
         const data = await fetchCurrentWeather();
         console.log('📊 Data cuaca diterima:', data);
@@ -186,6 +218,7 @@ export function WeatherPrediction() {
     if (!selectedLocation) return;
     setLoading(true);
     try {
+      logActivity(`Gunakan Prediksi AI Cuaca (${selectedLocation})`);
       console.log('Meminta prediksi untuk lokasi:', selectedLocation);
       const predictions = await fetchWeatherPredictions(7, selectedLocation);
       console.log('Prediksi diterima:', predictions);
@@ -202,6 +235,7 @@ export function WeatherPrediction() {
     if (!selectedLocation) return;
     setCropLoading(true);
     try {
+      logActivity(`Lihat Rekomendasi Tanaman (${selectedLocation})`);
       console.log('Meminta rekomendasi tanaman untuk lokasi:', selectedLocation);
       const recommendations = await fetchCropRecommendationsByLocation(selectedLocation, 7);
       console.log('Rekomendasi tanaman diterima:', recommendations);
@@ -263,7 +297,10 @@ const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "http://localhost:800
   }
 
   // === Filter data hari ini untuk lokasi terpilih ===
-  const today = new Date().toISOString().split("T")[0];
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  
+  console.log('Today (Local):', today);
   const todayWeather = currentWeather
     .filter((w) => w.location_name === selectedLocation && w.date && w.date.startsWith(today));
 
@@ -279,6 +316,13 @@ const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "http://localhost:800
 
   // Safely access optional interpolation fields that may not be present on WeatherData
   const firstWeather = todayWeather.length > 0 ? (todayWeather[0] as any) : null;
+
+  // Menghitung total curah hujan OpenWeather hari ini dari data prakiraan
+  const todayTotalRainfall = weatherDetailData?.forecasts
+    ? weatherDetailData.forecasts
+        .filter(f => f.date.startsWith(today))
+        .reduce((sum, f) => sum + (f.rainfall || 0), 0)
+    : (weatherDetailData?.current?.rainfall || 0);
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -326,56 +370,40 @@ const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "http://localhost:800
                   <Sun className="h-5 w-5 text-yellow-500" />
                   Ringkasan Cuaca Hari Ini ({selectedLocation})
                 </div>
-                {firstWeather?.is_interpolated && (
-                  <Badge variant="outline" className="text-xs bg-blue-50">
-                    [ESTIMASI] Data Estimasi
-                  </Badge>
-                )}
+                <Badge variant="outline" className="text-xs bg-green-50 text-green-700">
+                  Real-time OpenWeather
+                </Badge>
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {todayWeather.length > 0 ? (
-                <>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-                    <div>
-                      <Thermometer className="h-6 w-6 mx-auto text-orange-500" />
-                      <p className="text-sm">Suhu Rata-rata</p>
-                      <p className="font-bold text-lg">{avgTemp}°C</p>
-                    </div>
-                    <div>
-                      <Droplets className="h-6 w-6 mx-auto text-blue-500" />
-                      <p className="text-sm">Kelembapan</p>
-                      <p className="font-bold text-lg">{avgHum}%</p>
-                    </div>
-                    <div>
-                      <CloudRain className="h-6 w-6 mx-auto text-indigo-600" />
-                      <p className="text-sm">Curah Hujan</p>
-                      <p className="font-bold text-lg">{avgRain} mm</p>
-                    </div>
-                    <div>
-                      <Sprout className="h-6 w-6 mx-auto text-green-600" />
-                      <p className="text-sm">Kondisi</p>
-                      <Badge className="bg-green-100 text-green-700">
-                        {parseFloat(avgRain) > 10 ? "Hujan" : "Cerah"}
-                      </Badge>
-                    </div>
+              {weatherDetailData?.current ? (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                  <div>
+                    <Thermometer className="h-6 w-6 mx-auto text-orange-500" />
+                    <p className="text-sm">Suhu Saat Ini</p>
+                    <p className="font-bold text-lg">{weatherDetailData.current.temperature.toFixed(1)}°C</p>
                   </div>
-                  {firstWeather?.is_interpolated && (
-                    <div className="mt-4 p-3 bg-blue-50 rounded-lg text-sm text-blue-800">
-                      <p className="font-medium">[INFO] Data Estimasi (Interpolasi)</p>
-                      <p className="text-xs mt-1">
-                        Data cuaca untuk {selectedLocation} diestimasi dari kecamatan terdekat:{" "}
-                        {firstWeather?.interpolation_sources?.join(", ") || "N/A"}
-                      </p>
-                      <p className="text-xs mt-1">
-                        Metode: {firstWeather?.interpolation_method || "IDW"}
-                      </p>
-                    </div>
-                  )}
-                </>
+                  <div>
+                    <Droplets className="h-6 w-6 mx-auto text-blue-500" />
+                    <p className="text-sm">Kelembapan</p>
+                    <p className="font-bold text-lg">{weatherDetailData.current.humidity}%</p>
+                  </div>
+                  <div>
+                    <CloudRain className="h-6 w-6 mx-auto text-indigo-600" />
+                    <p className="text-sm">Total Curah Hujan</p>
+                    <p className="font-bold text-lg">{todayTotalRainfall.toFixed(1)} mm</p>
+                  </div>
+                  <div>
+                    <Sprout className="h-6 w-6 mx-auto text-green-600" />
+                    <p className="text-sm">Kondisi</p>
+                    <Badge className="bg-green-100 text-green-700 border-green-200">
+                      {weatherDetailData.current.weather}
+                    </Badge>
+                  </div>
+                </div>
               ) : (
                 <p className="text-center text-muted-foreground py-6">
-                  Tidak ada data untuk hari ini.
+                  {weatherDetailData === null ? "Memuat data cuaca..." : "Tidak ada data real-time untuk hari ini."}
                 </p>
               )}
             </CardContent>

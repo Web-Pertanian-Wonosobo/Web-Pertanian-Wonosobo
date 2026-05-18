@@ -149,6 +149,7 @@ export const normalizeFromDatabase = (item: any): Komoditas => {
     tanggal: item.date || item.created_at,
     perubahan: "0%", // Tidak ada data perubahan dari database
     kategori: item.category || "Umum",
+    source: item.user_id ? "Manual" : "Otomatis",
   };
 };
 

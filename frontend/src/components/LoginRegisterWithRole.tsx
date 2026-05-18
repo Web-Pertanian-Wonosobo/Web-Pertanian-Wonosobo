@@ -64,7 +64,7 @@ export function LoginRegisterWithRole({ onLogin }: LoginRegisterWithRoleProps) {
             />
           </div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            EcoScope Banyumas
+            EcoScope Wonosobo
           </h1>
           <p className="text-gray-600">
             Platform monitoring lingkungan dan pasar pertanian
@@ -368,9 +368,9 @@ export function LoginRegisterWithRole({ onLogin }: LoginRegisterWithRoleProps) {
 
         {/* Footer */}
         <div className="text-center mt-8 text-sm text-gray-500">
-          <p>© 2025 EcoScope Banyumas. Semua hak dilindungi.</p>
+          <p>© 2025 EcoScope Wonosobo. Semua hak dilindungi.</p>
           <p className="mt-1">
-            Versi 1.0.0 | Kontak: info@ecoscope-banyumas.id
+            Versi 1.0.0 | Kontak: info@ecoscope-wonosobo.id
           </p>
         </div>
       </div>

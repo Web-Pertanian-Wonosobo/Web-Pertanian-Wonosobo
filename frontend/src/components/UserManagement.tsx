@@ -379,15 +379,15 @@ export function UserManagement() {
         <CardContent>
           <div className="overflow-x-auto">
             <Table>
-              <TableHeader>
+              <TableHeader className="bg-slate-50/80">
                 <TableRow>
-                  <TableHead className="w-1/6">Nama</TableHead>
-                  <TableHead className="w-1/6">Email</TableHead>
-                  <TableHead className="w-1/12">Role</TableHead>
-                  <TableHead className="w-1/6">Deskripsi</TableHead>
-                  <TableHead className="w-1/6">Alamat</TableHead>
-                  <TableHead className="w-1/8">Dibuat</TableHead>
-                  <TableHead className="w-1/12">Aksi</TableHead>
+                  <TableHead className="w-1/6 font-bold text-gray-900">Nama</TableHead>
+                  <TableHead className="w-1/6 font-bold text-gray-900">Email</TableHead>
+                  <TableHead className="w-1/12 font-bold text-gray-900">Role</TableHead>
+                  <TableHead className="w-1/6 font-bold text-gray-900">Deskripsi</TableHead>
+                  <TableHead className="w-1/6 font-bold text-gray-900">Alamat</TableHead>
+                  <TableHead className="w-1/8 font-bold text-gray-900">Dibuat</TableHead>
+                  <TableHead className="w-1/12 font-bold text-gray-900">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

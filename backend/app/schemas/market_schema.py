@@ -9,6 +9,7 @@ class MarketPriceCreate(BaseModel):
     unit: str = Field(..., min_length=1, max_length=20)
     price: Union[int, float] = Field(..., gt=0)  # Harus positif
     date: Optional[str] = None  # Change to string to avoid serialization issues
+    planting_date: Optional[str] = None
     
     @validator('price', pre=True)
     def parse_price(cls, v):
@@ -19,9 +20,9 @@ class MarketPriceCreate(BaseModel):
                 raise ValueError(f"Invalid price format: {v}")
         return float(v)
     
-    @validator('date', pre=True)
+    @validator('date', 'planting_date', pre=True)
     def parse_date(cls, v):
-        if v is None:
+        if v is None or v == "":
             return None
         if isinstance(v, str):
             try:

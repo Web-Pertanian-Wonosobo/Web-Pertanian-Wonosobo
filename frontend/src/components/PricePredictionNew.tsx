@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -42,6 +42,19 @@ import {
   type ForecastResult,
   formatDateID,
 } from "../services/forecastApi";
+import { fetchCropsDatabase } from "../services/cropApi";
+
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "http://localhost:8000").replace(/\/$/, "");
+
+const logActivity = async (activity: string) => {
+  try {
+    await fetch(`${API_BASE_URL}/market/log?activity=${encodeURIComponent(activity)}`, {
+      method: 'POST'
+    });
+  } catch (error) {
+    console.error("Failed to log activity:", error);
+  }
+};
 
 export function PricePrediction() {
   const [selectedCommodity, setSelectedCommodity] = useState("");
@@ -55,10 +68,12 @@ export function PricePrediction() {
   const [simulationData, setSimulationData] = useState({
     harvestAmount: "",
     harvestDate: "",
+    plantingDate: "",
     estimatedPrice: 0,
     totalRevenue: 0,
     bestSellDate: "",
   });
+  const [cropsDb, setCropsDb] = useState<any[]>([]);
 
   // Load komoditas data from API
   const loadPrices = async () => {
@@ -88,12 +103,59 @@ export function PricePrediction() {
     }
   };
 
+  const hasLogged = useRef(false);
+
   // Auto-refresh every 5 minutes
   useEffect(() => {
     loadPrices();
+    
+    // Log aktivitas HANYA SEKALI saat mount
+    if (!hasLogged.current) {
+      logActivity("Lihat Harga (Prediksi)");
+      hasLogged.current = true;
+    }
+    
+    // Load crops database for growth periods
+    const loadCrops = async () => {
+      try {
+        const data = await fetchCropsDatabase();
+        if (data && data.crops) {
+          setCropsDb(data.crops);
+        }
+      } catch (err) {
+        console.error("Failed to fetch crops database:", err);
+      }
+    };
+    loadCrops();
+
     const interval = setInterval(loadPrices, 5 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
+
+  // Update harvest date automatically when planting date or commodity changes
+  useEffect(() => {
+    if (simulationData.plantingDate && selectedCommodity && cropsDb.length > 0) {
+      // Find matching crop in database
+      const crop = cropsDb.find(c => 
+        selectedCommodity.toLowerCase().includes(c.name.toLowerCase()) ||
+        c.name.toLowerCase().includes(selectedCommodity.toLowerCase())
+      );
+      
+      if (crop) {
+        const growthPeriod = parseInt(crop.growth_period) || 90;
+        const pDate = new Date(simulationData.plantingDate);
+        if (!isNaN(pDate.getTime())) {
+          const hDate = new Date(pDate);
+          hDate.setDate(pDate.getDate() + growthPeriod);
+          
+          setSimulationData(prev => ({
+            ...prev,
+            harvestDate: hDate.toISOString().split('T')[0]
+          }));
+        }
+      }
+    }
+  }, [simulationData.plantingDate, selectedCommodity, cropsDb]);
 
   // Get commodity names (unique only)
   const commodityNames = Array.from(
@@ -243,8 +305,8 @@ export function PricePrediction() {
         return;
       }
 
-      if (daysUntilHarvest > 90) {
-        toast.error("Tanggal panen terlalu jauh (maksimal 90 hari)");
+      if (daysUntilHarvest > 180) {
+        toast.error("Tanggal panen terlalu jauh (maksimal 180 hari)");
         setForecastLoading(false);
         return;
       }
@@ -509,18 +571,28 @@ export function PricePrediction() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="harvestDate">Tanggal Panen</Label>
+                  <Label htmlFor="plantingDate">Waktu Tanam</Label>
                   <Input
-                    id="harvestDate"
+                    id="plantingDate"
                     type="date"
-                    value={simulationData.harvestDate}
+                    value={simulationData.plantingDate}
                     onChange={(e) =>
                       setSimulationData((prev) => ({
                         ...prev,
-                        harvestDate: e.target.value,
+                        plantingDate: e.target.value,
                       }))
                     }
                   />
+                  <p className="text-xs text-muted-foreground mt-1">Kapan Anda mulai menanam?</p>
+                </div>
+                <div>
+                  <Label htmlFor="harvestDate">Estimasi Tanggal Panen</Label>
+                  <div className="p-2 bg-slate-50 border rounded-md text-sm font-medium">
+                    {simulationData.harvestDate ? formatDateID(simulationData.harvestDate) : "Akan dihitung otomatis"}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Dihitung otomatis berdasarkan masa tumbuh komoditas
+                  </p>
                 </div>
                 <Button 
                   onClick={calculateSimulation} 
@@ -600,6 +672,21 @@ export function PricePrediction() {
                             100
                           ).toFixed(1)}
                           %
+                        </p>
+                      </div>
+                    )}
+                    {simulationData.plantingDate && simulationData.harvestDate && (
+                      <div className="p-3 bg-slate-100 rounded-lg">
+                        <p className="text-sm text-muted-foreground">
+                          Lama Tanam
+                        </p>
+                        <p className="font-medium text-slate-700">
+                          {Math.ceil(
+                            (new Date(simulationData.harvestDate).getTime() - 
+                             new Date(simulationData.plantingDate).getTime()) / 
+                            (1000 * 60 * 60 * 24)
+                          )}{" "}
+                          Hari
                         </p>
                       </div>
                     )}

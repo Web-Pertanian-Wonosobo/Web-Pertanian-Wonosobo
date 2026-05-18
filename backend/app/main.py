@@ -11,7 +11,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException
 from app.config import settings
-from app.routers import weather, market, auth, wilayah, forecast, crops, users
+from app.routers import weather, market, auth, wilayah, forecast, crops, users, commodity
 import logging
 
 # Load environment variables from backend/.env (works with uvicorn --reload subprocesses)
@@ -101,6 +101,7 @@ app.include_router(crops.router)  # Router already has /crops prefix
 app.include_router(wilayah.router)  # Router already has /wilayah prefix
 app.include_router(forecast.router)  # Router already has /forecast prefix
 app.include_router(users.router)  # Router already has /users prefix
+app.include_router(commodity.router)  # Router already has /commodities prefix
 # app.include_router(predict.router)  # Temporarily disabled 
 
 # Environment variable untuk enable/disable auto-sync
