@@ -20,8 +20,8 @@ router = APIRouter(prefix="/market", tags=["Market Data"])
 @router.get("/realtime")
 def get_realtime_prices():
     """
-    Mengambil data harga pasar real-time langsung dari API Disdagkopukm.
-    Data tidak disimpan ke database, langsung dari API.
+    Mengambil data harga pasar real-time langsung dari halaman harga-pasar Disdagkopukm.
+    Data tidak disimpan ke database.
     """
     try:
         result = get_realtime_market_prices()
@@ -32,7 +32,7 @@ def get_realtime_prices():
 @router.get("/realtime/komoditas")
 def get_komoditas_realtime():
     """
-    Mengambil data komoditas real-time dari API.
+    Mengambil data komoditas real-time dari halaman harga-pasar.
     """
     try:
         data = fetch_realtime_komoditas()
@@ -40,7 +40,7 @@ def get_komoditas_realtime():
             "success": True,
             "total": len(data),
             "data": data,
-            "source": "https://disdagkopukm.wonosobokab.go.id/api/komoditas"
+            "source": "https://disdagkopukm.wonosobokab.go.id/harga-pasar"
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Gagal mengambil data komoditas: {e}")
@@ -48,7 +48,7 @@ def get_komoditas_realtime():
 @router.get("/realtime/produk-komoditas")
 def get_produk_komoditas_realtime():
     """
-    Mengambil data produk komoditas real-time dari API.
+    Mengambil data produk komoditas real-time dari halaman harga-pasar.
     """
     try:
         data = fetch_realtime_produk_komoditas()
@@ -56,7 +56,7 @@ def get_produk_komoditas_realtime():
             "success": True,
             "total": len(data),
             "data": data,
-            "source": "https://disdagkopukm.wonosobokab.go.id/api/produk-komoditas"
+            "source": "https://disdagkopukm.wonosobokab.go.id/harga-pasar"
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Gagal mengambil data produk-komoditas: {e}")
@@ -64,7 +64,7 @@ def get_produk_komoditas_realtime():
 @router.get("/realtime/produk")
 def get_produk_realtime():
     """
-    Mengambil data produk real-time dari API.
+    Mengambil data produk real-time dari halaman harga-pasar.
     """
     try:
         data = fetch_realtime_produk()
@@ -72,7 +72,7 @@ def get_produk_realtime():
             "success": True,
             "total": len(data),
             "data": data,
-            "source": "https://disdagkopukm.wonosobokab.go.id/api/produk"
+            "source": "https://disdagkopukm.wonosobokab.go.id/harga-pasar"
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Gagal mengambil data produk: {e}")
@@ -80,7 +80,7 @@ def get_produk_realtime():
 @router.post("/sync")
 def sync_market_data():
     """
-    Mengambil data dari API Disdagkopukm dan menyimpannya ke database lokal.
+    Mengambil data dari halaman harga-pasar Disdagkopukm dan menyimpannya ke database lokal.
     """
     result = fetch_and_save_market_data()
     return result

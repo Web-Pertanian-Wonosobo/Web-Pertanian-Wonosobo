@@ -2,113 +2,19 @@
 
 ## 🌐 Base URL
 ```
-Production: https://disdagkopukm.wonosobokab.go.id/api/
+Production Source: https://disdagkopukm.wonosobokab.go.id/harga-pasar
 Local Backend: http://localhost:8000
 ```
 
 ---
 
-## 🔥 Endpoint API Real-time (Disdagkopukm Wonosobo)
+## 🔥 Endpoint Sumber Real-time (Disdagkopukm Wonosobo)
 
-### 1. 🥬 Komoditas
-
-#### Get All Komoditas
 ```http
-GET https://disdagkopukm.wonosobokab.go.id/api/komoditas
+GET https://disdagkopukm.wonosobokab.go.id/harga-pasar
 ```
 
-**Response Example:**
-```json
-[
-  {
-    "id": 1,
-    "nama": "Padi",
-    "kategori": "Pangan",
-    "satuan": "kg",
-    "harga": 6200,
-    "lokasi": "Wonosobo",
-    "tanggal": "2025-10-21"
-  }
-]
-```
-
-#### Get Komoditas by ID
-```http
-GET https://disdagkopukm.wonosobokab.go.id/api/komoditas/{id}
-```
-
----
-
-### 2. 🧺 Kategori Komoditas
-
-#### Get All Categories
-```http
-GET https://disdagkopukm.wonosobokab.go.id/api/kategori-komoditas
-```
-
-#### Get Category by ID
-```http
-GET https://disdagkopukm.wonosobokab.go.id/api/kategori-komoditas/{id}
-```
-
----
-
-### 3. 🧃 Produk
-
-#### Get All Products
-```http
-GET https://disdagkopukm.wonosobokab.go.id/api/produk
-```
-
-#### Get Product by ID
-```http
-GET https://disdagkopukm.wonosobokab.go.id/api/produk/{id}
-```
-
----
-
-### 4. 🌾 Produk Komoditas
-
-#### Get All Product Commodities
-```http
-GET https://disdagkopukm.wonosobokab.go.id/api/produk-komoditas
-```
-
-**Response Example:**
-```json
-[
-  {
-    "id": 7,
-    "nama": "Cabai Merah",
-    "komoditas": "Cabai",
-    "kategori": "Sayuran",
-    "satuan": "kg",
-    "harga": 35000,
-    "pasar": "Pasar Wonosobo",
-    "tanggal": "2025-10-21",
-    "updated_at": "2025-10-21 10:00:00"
-  }
-]
-```
-
-#### Get Product Commodity by ID
-```http
-GET https://disdagkopukm.wonosobokab.go.id/api/produk-komoditas/{id}
-```
-
----
-
-### 5. 👨‍🌾 Petani
-
-#### Get All Farmers
-```http
-GET https://disdagkopukm.wonosobokab.go.id/api/petani
-```
-
-#### Get Farmer by ID
-```http
-GET https://disdagkopukm.wonosobokab.go.id/api/petani/{id}
-```
+Data harga dibaca dari tabel pada halaman tersebut (scraping server-side).
 
 ---
 
@@ -121,7 +27,7 @@ GET https://disdagkopukm.wonosobokab.go.id/api/petani/{id}
 GET /market/realtime
 ```
 
-**Description:** Mengambil data harga real-time dari semua endpoint (komoditas, produk, produk-komoditas) dan menggabungkannya.
+**Description:** Mengambil data harga real-time dari halaman `harga-pasar` dan menggabungkannya.
 
 **Response:**
 ```json
@@ -136,7 +42,7 @@ GET /market/realtime
       "price": 6200,
       "market_location": "Wonosobo",
       "date": "2025-10-21",
-      "source": "produk-komoditas"
+      "source": "harga-pasar"
     },
     {
       "commodity_name": "Cabai Merah",
@@ -145,7 +51,7 @@ GET /market/realtime
       "price": 35000,
       "market_location": "Wonosobo",
       "date": "2025-10-21",
-      "source": "komoditas"
+      "source": "harga-pasar"
     }
   ],
   "timestamp": "2025-10-21T10:30:00"
@@ -161,7 +67,7 @@ GET /market/realtime
 GET /market/realtime/komoditas
 ```
 
-**Description:** Mengambil data komoditas langsung dari API Disdagkopukm.
+**Description:** Mengambil data komoditas langsung dari halaman `harga-pasar`.
 
 **Response:**
 ```json
@@ -169,7 +75,7 @@ GET /market/realtime/komoditas
   "success": true,
   "total": 15,
   "data": [...],
-  "source": "https://disdagkopukm.wonosobokab.go.id/api/komoditas"
+  "source": "https://disdagkopukm.wonosobokab.go.id/harga-pasar"
 }
 ```
 
@@ -182,7 +88,7 @@ GET /market/realtime/komoditas
 GET /market/realtime/produk-komoditas
 ```
 
-**Description:** Mengambil data produk komoditas langsung dari API.
+**Description:** Mengambil data produk komoditas langsung dari halaman `harga-pasar`.
 
 **Response:**
 ```json
@@ -190,7 +96,7 @@ GET /market/realtime/produk-komoditas
   "success": true,
   "total": 20,
   "data": [...],
-  "source": "https://disdagkopukm.wonosobokab.go.id/api/produk-komoditas"
+  "source": "https://disdagkopukm.wonosobokab.go.id/harga-pasar"
 }
 ```
 
@@ -203,7 +109,7 @@ GET /market/realtime/produk-komoditas
 GET /market/realtime/produk
 ```
 
-**Description:** Mengambil data produk langsung dari API.
+**Description:** Mengambil data produk langsung dari halaman `harga-pasar`.
 
 **Response:**
 ```json
@@ -211,7 +117,7 @@ GET /market/realtime/produk
   "success": true,
   "total": 10,
   "data": [...],
-  "source": "https://disdagkopukm.wonosobokab.go.id/api/produk"
+  "source": "https://disdagkopukm.wonosobokab.go.id/harga-pasar"
 }
 ```
 
